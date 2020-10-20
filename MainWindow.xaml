@@ -98,7 +98,9 @@
 
                     <Button Content="Start" Grid.Column="0" Grid.Row="0" Click="StartBeatbox"/>
                     <Button Content="Stop" Grid.Column="1" Grid.Row="0" Click="StopBeatbox"/>
-                    <TextBlock x:Name="Log" Margin="10" Text="" TextWrapping="Wrap" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"/>
+                    <ScrollViewer x:Name="ScrollViewer" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
+                        <TextBlock x:Name="Log" Text="" TextWrapping="Wrap"/>
+                    </ScrollViewer>
                 </Grid>
             </Grid>
         </Grid>
