@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:Beatbox"
         mc:Ignorable="d"
         Title="Beatbox - The Ultimate Damage-Dealer" Height="350" Width="800"
-        x:Name="MainFrame" ContentRendered="Window_ContentRendered">
+        x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="NoResize">
     <DockPanel>
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
@@ -81,7 +81,26 @@
             <!-- center column -->
             <Grid Grid.Column="1">
                 <Grid>
-                    
+                    <Grid.RenderTransform>
+                        <RotateTransform/>
+                    </Grid.RenderTransform>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="0.1*"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Image x:Name="ArrowImage" Source="/arrow.png" Grid.Row="0" />
+                    <Grid x:Name="AnimationPanel" Grid.Row="1">
+                        <Grid.Background>
+                            <ImageBrush ImageSource="/circle_bg.png" Stretch="Uniform"/>
+                        </Grid.Background>
+                        <Image x:Name="rotatingArrow" Stretch="None" Source="/rotating_arrow.png"
+                               RenderTransformOrigin="0.5,4.17" Margin="0,0,0,219"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" >
+                        </Image>
+                    </Grid>
+                    <TextBlock x:Name="ExplosionLabel" Grid.Row="1"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           FontSize="24" FontFamily="Yu Gothic UI"/>
                 </Grid>
             </Grid>
             <!-- right column -->

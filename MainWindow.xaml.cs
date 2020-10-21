@@ -1,8 +1,12 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Drawing;
 using System.Text;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace Beatbox
 {
@@ -12,8 +16,6 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window
     {
-        private static BackgroundWorker worker;
-
         private static int maxDamageValueForLevel = 100;
 
         private static int damagePerHit = 10;
@@ -37,26 +39,17 @@ namespace Beatbox
         private static double convertRatioCR = 1.1;     // increases crit chance
         private static double convertRatioHR = 1.1;     // decreases attack rate
 
+        private static BackgroundWorker worker;
+
+        private Storyboard circleStoryboard;
+        private Storyboard explosionStoryboard;
+        private DoubleAnimation rotateAnimation;
+        private DoubleAnimation opacityAnimation;
+        private DoubleAnimation sizeAnimation;
+
         public MainWindow()
         {
             InitializeComponent();
-        }
-
-        private int CalcDamageValue()
-        {
-            Random random = new Random();
-
-            int minDmg = (int) (currentDamagePerHit * 0.75);
-            int returned = random.Next(minDmg, currentDamagePerHit + 1);
-
-            currentCritChance = baseCritChance * Math.Pow(convertRatioCR, currentCR - 1);
-            double check = random.NextDouble()*100+1;
-            if (check <= currentCritChance)
-            {
-                returned *= 2;
-            }
-
-            return returned;
         }
 
         /// <summary>
@@ -67,6 +60,8 @@ namespace Beatbox
         private void Window_ContentRendered(object sender, EventArgs e)
         {
             InitWorker();
+            InitCircleAnimation();
+            InitExplosionAnimation();
             HideIncreaseButtons();
             // init UI
             ValueAP.Content = currentAP;
@@ -87,9 +82,61 @@ namespace Beatbox
             worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
         }
 
-        private void Worker_RunWorkerCompleted1(object sender, RunWorkerCompletedEventArgs e)
+        /// <summary>
+        /// Initializes the animation of the image with starting values.
+        /// Update the duration later using
+        /// <code>rotateAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));</code>
+        /// </summary>
+        private void InitCircleAnimation()
         {
-            throw new NotImplementedException();
+            rotateAnimation = new DoubleAnimation();
+            circleStoryboard = new Storyboard();
+
+            rotateAnimation.From = 0;
+            rotateAnimation.To = 360;
+            rotateAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
+
+            Storyboard.SetTarget(rotateAnimation, rotatingArrow);
+            Storyboard.SetTargetProperty(rotateAnimation, new PropertyPath("(UIElement.RenderTransform).(RotateTransform.Angle)"));
+            circleStoryboard.Children.Add(rotateAnimation);
+            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
+            circleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
+
+            rotatingArrow.RenderTransform = new RotateTransform();
+
+            Resources.Add("Storyboard", circleStoryboard);
+        }
+
+        private void InitExplosionAnimation()
+        {
+            opacityAnimation = new DoubleAnimation();
+            sizeAnimation = new DoubleAnimation();
+            explosionStoryboard = new Storyboard();
+
+            opacityAnimation.From = 0;
+            opacityAnimation.To = 1;
+            opacityAnimation.AutoReverse = true;
+            opacityAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(500));
+
+            sizeAnimation.From = 10;
+            sizeAnimation.To = 30;
+            sizeAnimation.AutoReverse = true;
+            sizeAnimation.Duration = opacityAnimation.Duration;
+
+            Storyboard.SetTarget(opacityAnimation, ExplosionLabel);
+            Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath(TextBlock.OpacityProperty));
+            Storyboard.SetTarget(sizeAnimation, ExplosionLabel);
+            Storyboard.SetTargetProperty(sizeAnimation, new PropertyPath(TextBlock.FontSizeProperty));
+            explosionStoryboard.Children.Add(opacityAnimation);
+            explosionStoryboard.Children.Add(sizeAnimation);
+            explosionStoryboard.Duration = opacityAnimation.Duration;
+
+            Resources.Add("explosionStoryboard", explosionStoryboard);
+        }
+
+        private void UpdateAnimation(int duration)
+        {
+            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(duration));
         }
 
         /// <summary>
@@ -132,6 +179,7 @@ namespace Beatbox
         {
             System.Diagnostics.Debug.WriteLine("progress changed");
             XPBar.Value = e.ProgressPercentage;
+            FireExplosionEvent((int)e.UserState, (int)e.UserState > currentDamagePerHit);
             UpdateDPS();
             UpdateMaxDamage((int)e.UserState);
             AppendToLog((int)e.UserState, "\n");
@@ -178,6 +226,44 @@ namespace Beatbox
 
                 (sender as BackgroundWorker).RunWorkerAsync();
             }
+        }
+
+        private int CalcDamageValue()
+        {
+            Random random = new Random();
+
+            int minDmg = (int)(currentDamagePerHit * 0.75);
+            int returned = random.Next(minDmg, currentDamagePerHit + 1);
+
+            currentCritChance = baseCritChance * Math.Pow(convertRatioCR, currentCR - 1);
+            bool check = random.NextDouble() * 100 + 1 <= currentCritChance;
+            if (check)
+            {
+                returned *= 2;
+            }
+
+            return returned;
+        }
+
+        /// <summary>
+        /// Function to animate label on the UI, that shows damage values
+        /// inside the circle as an explosion, by adjusting fontsize and opacity.
+        /// If the value is a critical strike, shows extra effects.
+        /// </summary>
+        /// <param name="damageValue"></param>
+        /// <param name="isCrit"></param>
+        private void FireExplosionEvent(int damageValue, bool isCrit)
+        {
+            ExplosionLabel.Text = Convert.ToString(damageValue);
+            if (isCrit)
+            {
+                ExplosionLabel.FontWeight = FontWeights.Bold;
+            }
+            else
+            {
+                ExplosionLabel.FontWeight = FontWeights.Normal;
+            }
+            explosionStoryboard.Begin();
         }
 
         /// <summary>
@@ -337,6 +423,7 @@ namespace Beatbox
             if (!worker.IsBusy)
             {
                 worker.RunWorkerAsync();
+                circleStoryboard.Begin();
                 AppendToLog("Starting to hit stuff...", "\n");
             }
         }
@@ -346,6 +433,7 @@ namespace Beatbox
             if (worker.IsBusy)
             {
                 worker.CancelAsync();
+                circleStoryboard.Stop();
                 AppendToLog("Enough hitting, going to stop now.", "\n");
             }
         }

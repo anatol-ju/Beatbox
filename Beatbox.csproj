@@ -6,4 +6,18 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="arrow.png" />
+    <None Remove="circle_01.png" />
+    <None Remove="circle_bg.png" />
+    <None Remove="rotating_arrow.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="arrow.png" />
+    <Resource Include="circle_01.png" />
+    <Resource Include="circle_bg.png" />
+    <Resource Include="rotating_arrow.png" />
+  </ItemGroup>
+
 </Project>
