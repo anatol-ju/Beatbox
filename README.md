@@ -15,7 +15,9 @@ I managed to get some nice functionality going:
 - control binding (using XAML and C# for events)
 - animation, yes thats right (making images move on the UI)
 - background worker included (calculating stuff while UI stays responsive)
-But that's only the beginning, more to come.
+But that's only the beginning, more to come. But this is how it looks like now (from VS).
+
+![Beatbox_01](https://user-images.githubusercontent.com/55158774/96895948-45dd3000-148d-11eb-91af-6b77ffb3cbe5.png)
 
 ## How to use
 
