@@ -34,10 +34,11 @@ namespace Beatbox
 
         private static int availablePoints = 0;
         private static int overdraft = 0;
+        private static int sumDamage = 0;
 
-        private static double convertRatioAP = 1.15;    // increases the damage
-        private static double convertRatioCR = 1.1;     // increases crit chance
-        private static double convertRatioHR = 1.1;     // decreases attack rate
+        private static double convertRatioAP = 1.2;    // increases the damage
+        private static double convertRatioCR = 1.2;     // increases crit chance
+        private static double convertRatioHR = 1.05;     // decreases attack rate
 
         private static BackgroundWorker worker;
 
@@ -46,6 +47,9 @@ namespace Beatbox
         private DoubleAnimation rotateAnimation;
         private DoubleAnimation opacityAnimation;
         private DoubleAnimation sizeAnimation;
+
+        private static int animationMaxFontSize = 30;
+        private static bool isChangingRate = false;
 
         public MainWindow()
         {
@@ -67,7 +71,12 @@ namespace Beatbox
             ValueAP.Content = currentAP;
             ValueCR.Content = currentCR;
             ValueHR.Content = currentHR;
+            CurrentDamageValue.Content = "7 - 10";
+            CritChanceValue.Content = currentCritChance;
             AttackRateValue.Content = currentAttackRate/1000.0;
+            LevelValue.Content = 0;
+            CurrentDamageDoneValue.Content = 0;
+            NextLevelAtValue.Content = 100;
         }
 
         private void InitWorker()
@@ -95,12 +104,14 @@ namespace Beatbox
             rotateAnimation.From = 0;
             rotateAnimation.To = 360;
             rotateAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
+            rotateAnimation.Completed += new EventHandler(RotateAnimation_Completed);
 
             Storyboard.SetTarget(rotateAnimation, rotatingArrow);
             Storyboard.SetTargetProperty(rotateAnimation, new PropertyPath("(UIElement.RenderTransform).(RotateTransform.Angle)"));
             circleStoryboard.Children.Add(rotateAnimation);
             circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
-            circleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
+            //circleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
+            //circleStoryboard.Completed += new EventHandler(CircleStoryboard_Completed);
 
             rotatingArrow.RenderTransform = new RotateTransform();
 
@@ -113,13 +124,13 @@ namespace Beatbox
             sizeAnimation = new DoubleAnimation();
             explosionStoryboard = new Storyboard();
 
-            opacityAnimation.From = 0;
-            opacityAnimation.To = 1;
+            opacityAnimation.From = 0.0;
+            opacityAnimation.To = 1.0;
             opacityAnimation.AutoReverse = true;
             opacityAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(500));
 
-            sizeAnimation.From = 10;
-            sizeAnimation.To = 30;
+            sizeAnimation.From = animationMaxFontSize/3;
+            sizeAnimation.To = animationMaxFontSize;
             sizeAnimation.AutoReverse = true;
             sizeAnimation.Duration = opacityAnimation.Duration;
 
@@ -130,13 +141,10 @@ namespace Beatbox
             explosionStoryboard.Children.Add(opacityAnimation);
             explosionStoryboard.Children.Add(sizeAnimation);
             explosionStoryboard.Duration = opacityAnimation.Duration;
+            explosionStoryboard.AutoReverse = true;
+            //explosionStoryboard.Completed += new EventHandler(ExplosionStoryboard_Completed);
 
             Resources.Add("explosionStoryboard", explosionStoryboard);
-        }
-
-        private void UpdateAnimation(int duration)
-        {
-            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(duration));
         }
 
         /// <summary>
@@ -160,6 +168,7 @@ namespace Beatbox
                 }
                 dmg = CalcDamageValue();
                 currentXP += dmg;
+                sumDamage += dmg;
                 System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", dmg, currentXP);
                 overdraft = currentXP - maxDamageValueForLevel;
                 // must be a percentage
@@ -181,8 +190,9 @@ namespace Beatbox
             XPBar.Value = e.ProgressPercentage;
             FireExplosionEvent((int)e.UserState, (int)e.UserState > currentDamagePerHit);
             UpdateDPS();
-            UpdateMaxDamage((int)e.UserState);
+            UpdateRecordDamage((int)e.UserState);
             AppendToLog((int)e.UserState, "\n");
+            CurrentDamageDoneValue.Content = sumDamage;
         }
 
         /// <summary>
@@ -228,6 +238,18 @@ namespace Beatbox
             }
         }
 
+
+        private void RotateAnimation_Completed(object sender, EventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("Storyboard completed.");
+            if (isChangingRate)
+            {
+                UpdateAnimation(currentAttackRate);
+                isChangingRate = false;
+            }
+            circleStoryboard.Begin();
+        }
+
         private int CalcDamageValue()
         {
             Random random = new Random();
@@ -258,12 +280,22 @@ namespace Beatbox
             if (isCrit)
             {
                 ExplosionLabel.FontWeight = FontWeights.Bold;
+                ExplosionLabel.FontStyle = FontStyles.Italic;
+                sizeAnimation.To = sizeAnimation.To * 1.5;
             }
             else
             {
                 ExplosionLabel.FontWeight = FontWeights.Normal;
+                ExplosionLabel.FontStyle = FontStyles.Normal;
+                sizeAnimation.To = animationMaxFontSize;
             }
             explosionStoryboard.Begin();
+        }
+
+        private void UpdateAnimation(int duration)
+        {
+            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(duration));
+            rotateAnimation.Duration = circleStoryboard.Duration;
         }
 
         /// <summary>
@@ -271,8 +303,9 @@ namespace Beatbox
         /// </summary>
         private void UpdateAttackRate()
         {
-            currentAttackRate = (int) (baseAttackRate * Math.Pow(convertRatioHR, currentHR - 1));
+            currentAttackRate = (int) (baseAttackRate / Math.Pow(convertRatioHR, currentHR - 1));
             AttackRateValue.Content = currentAttackRate / 1000.0;
+            isChangingRate = true;
         }
 
         /// <summary>
@@ -282,6 +315,8 @@ namespace Beatbox
         {
             currentLevel += 1;
             maxDamageValueForLevel = maxDamageValueForLevel * currentLevel;
+            LevelValue.Content = currentLevel;
+            NextLevelAtValue.Content = maxDamageValueForLevel;
         }
 
         /// <summary>
@@ -290,8 +325,13 @@ namespace Beatbox
         private void UpdateDamagePerHit()
         {
             currentDamagePerHit = (int) (currentDamagePerHit * convertRatioAP);
+            StringBuilder sb = new StringBuilder();
+            sb.Append((int)(currentDamagePerHit * 0.75));
+            sb.Append(" - ");
+            sb.Append(currentDamagePerHit);
+            CurrentDamageValue.Content = sb.ToString();
             System.Diagnostics.Debug.WriteLine("currentMinDamage: {0}", (int)(currentDamagePerHit * 0.75));
-            System.Diagnostics.Debug.WriteLine("currentMaxDamage: {0}", currentDamagePerHit);
+            System.Diagnostics.Debug.WriteLine("currentMaxDamage: {0}", (int)(currentDamagePerHit * 0.75));
         }
 
         /// <summary>
@@ -309,7 +349,7 @@ namespace Beatbox
         /// </summary>
         private void UpdateDPS()
         {
-            CurrentDamageValue.Content =
+            DamagePerSecondValue.Content =
                 currentCritChance * currentDamagePerHit * 1.75 / (2.0 * currentAttackRate / 1000);
         }
 
@@ -317,13 +357,18 @@ namespace Beatbox
         /// Checks if the given value for damage is higher than the current record and updates accordingly.
         /// </summary>
         /// <param name="dmg">Value to be compared with current record.</param>
-        private void UpdateMaxDamage(int dmg)
+        private void UpdateRecordDamage(int dmg)
         {
             if (dmg > currentRecord)
             {
                 currentRecord = dmg;
-                MaxDamageValue.Content = currentRecord;
+                RecordDamageValue.Content = currentRecord;
             }
+        }
+
+        private void UpdateCritChance()
+        {
+            CritChanceValue.Content = currentCritChance;
         }
 
         /// <summary>
@@ -360,6 +405,7 @@ namespace Beatbox
                 currentCR++;
                 availablePoints--;
                 ValueCR.Content = currentCR;
+                UpdateCritChance();
                 if (availablePoints == 0)
                 {
                     HideIncreaseButtons();
