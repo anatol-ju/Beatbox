@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:Beatbox"
         mc:Ignorable="d"
         Title="Beatbox - The Ultimate Damage-Dealer" Height="350" Width="800"
-        x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="NoResize">
-    <DockPanel>
+        x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="CanResize">
+    <DockPanel x:Name="ContentFrame" SizeChanged="HandlePanelResize">
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
@@ -25,11 +25,19 @@
             </MenuItem>
         </Menu>
         <!-- Shows information when leveled up or points available -->
+
         <Grid DockPanel.Dock="Bottom" x:Name="StatusBar">
             <ProgressBar x:Name="XPBar" Height="20" Minimum="0" Maximum="100"/>
-            <TextBlock Text="{Binding ElementName=XPBar, Path=Value, StringFormat=Current Progress: {0:0}%}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding ElementName=XPBar, Path=Value, StringFormat=Current Progress: {0:0}%}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock.RenderTransform>
+                    <ScaleTransform x:Name="XPBarScale"/>
+                </TextBlock.RenderTransform>
+            </TextBlock>
         </Grid>
+
         <!-- Main part of the frame -->
+
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.20*" />
@@ -37,56 +45,59 @@
                 <ColumnDefinition Width="0.2*" />
             </Grid.ColumnDefinitions>
             <!-- left column -->
-            <Grid Grid.Column="0" VerticalAlignment="Center">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="0.5*"/>
-                    <ColumnDefinition Width="0.2*"/>
-                    <ColumnDefinition Width="0.3*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <!-- fill in as many lines as needed -->
-                    <RowDefinition/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition/>
-                    <RowDefinition Height="20"/><!-- index 8 -->
-                    <RowDefinition/>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <!-- left, labels -->
-                <Label Content="Level:" FontWeight="Bold" Grid.Column="0" Grid.Row="1"/>
-                <Label Content="Attack Power:" Grid.Column="0" Grid.Row="3"/>
-                <Label Content="Critical Rating:" Grid.Column="0" Grid.Row="5"/>
-                <Label Content="Haste Rating:" Grid.Column="0" Grid.Row="7"/>
-                <Label Content="Damage:" Grid.Column="0" Grid.Row="9"/>
-                <Label Content="Crit Chance:" Grid.Column="0" Grid.Row="10"/>
-                <Label Content="Attack Rate:" Grid.Column="0" Grid.Row="11"/>
-                <Label Content="Damage/Sec:" Grid.Column="0" Grid.Row="12"/>
-                <Label Content="Record:" Grid.Column="0" Grid.Row="13"/>
-                
-                <!-- center, values -->
-                <Label x:Name="ValueAP" Content="0" Grid.Column="1" Grid.Row="3" HorizontalContentAlignment="Right"/>
-                <Label x:Name="ValueCR" Content="0" Grid.Column="1" Grid.Row="5" HorizontalContentAlignment="Right"/>
-                <Label x:Name="ValueHR" Content="0" Grid.Column="1" Grid.Row="7" HorizontalContentAlignment="Right"/>
-                <!-- right, buttons -->
-                <Button x:Name="IncrBttnAP" Content="Increase" Grid.Column="2" Grid.Row="3" Click="IncreaseAP"/>
-                <Button x:Name="IncrBttnCR" Content="Increase" Grid.Column="2" Grid.Row="5" Click="IncreaseCR"/>
-                <Button x:Name="IncrBttnHR" Content="Increase" Grid.Column="2" Grid.Row="7" Click="IncreaseHR"/>
-                <Label x:Name="LevelValue" Content="" FontWeight="Bold" Grid.Column="2" Grid.Row="1" HorizontalContentAlignment="Right"/>
-                <Label x:Name="CurrentDamageValue" Content="0" Grid.Column="2" Grid.Row="9" HorizontalContentAlignment="Right"/>
-                <Label x:Name="CritChanceValue" Content="0" Grid.Column="2" Grid.Row="10" HorizontalContentAlignment="Right"/>
-                <Label x:Name="AttackRateValue" Content="0" Grid.Column="2" Grid.Row="11" HorizontalContentAlignment="Right"/>
-                <Label x:Name="DamagePerSecondValue" Content="0" Grid.Column="2" Grid.Row="12" HorizontalContentAlignment="Right"/>
-                <Label x:Name="RecordDamageValue" Content="0" Grid.Column="2" Grid.Row="13" HorizontalContentAlignment="Right"/>
-            </Grid>
+            <Viewbox Grid.Column="0" VerticalAlignment="Center">
+                <Grid x:Name="InfoGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="0.5*"/>
+                        <ColumnDefinition Width="0.2*"/>
+                        <ColumnDefinition Width="0.3*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- fill in as many lines as needed -->
+                        <RowDefinition/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition/>
+                        <RowDefinition Height="20"/>
+                        <!-- index 8 -->
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <!-- left, labels -->
+                    <Label Content="Level:" FontWeight="Bold" Grid.Column="0" Grid.Row="1"/>
+                    <Label Content="Attack Power:" Grid.Column="0" Grid.Row="3"/>
+                    <Label Content="Critical Rating:" Grid.Column="0" Grid.Row="5"/>
+                    <Label Content="Haste Rating:" Grid.Column="0" Grid.Row="7"/>
+                    <Label Content="Damage:" Grid.Column="0" Grid.Row="9"/>
+                    <Label Content="Crit Chance:" Grid.Column="0" Grid.Row="10"/>
+                    <Label Content="Attack Rate:" Grid.Column="0" Grid.Row="11"/>
+                    <Label Content="Damage/Sec:" Grid.Column="0" Grid.Row="12"/>
+                    <Label Content="Record:" Grid.Column="0" Grid.Row="13"/>
+
+                    <!-- center, values -->
+                    <Label x:Name="ValueAP" Content="0" Grid.Column="1" Grid.Row="3" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="ValueCR" Content="0" Grid.Column="1" Grid.Row="5" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="ValueHR" Content="0" Grid.Column="1" Grid.Row="7" HorizontalContentAlignment="Right"/>
+                    <!-- right, buttons -->
+                    <Button x:Name="IncrBttnAP" Content="Increase" Grid.Column="2" Grid.Row="3" Click="IncreaseAP"/>
+                    <Button x:Name="IncrBttnCR" Content="Increase" Grid.Column="2" Grid.Row="5" Click="IncreaseCR"/>
+                    <Button x:Name="IncrBttnHR" Content="Increase" Grid.Column="2" Grid.Row="7" Click="IncreaseHR"/>
+                    <Label x:Name="LevelValue" Content="" FontWeight="Bold" Grid.Column="2" Grid.Row="1" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="CurrentDamageValue" Content="0" Grid.Column="2" Grid.Row="9" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="CritChanceValue" Content="0" Grid.Column="2" Grid.Row="10" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="AttackRateValue" Content="0" Grid.Column="2" Grid.Row="11" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="DamagePerSecondValue" Content="0" Grid.Column="2" Grid.Row="12" HorizontalContentAlignment="Right"/>
+                    <Label x:Name="RecordDamageValue" Content="0" Grid.Column="2" Grid.Row="13" HorizontalContentAlignment="Right"/>
+                </Grid>
+            </Viewbox>
             <!-- center column -->
             <Grid Grid.Column="1">
                 <Grid>
@@ -97,46 +108,78 @@
                         <RowDefinition Height="0.1*"/>
                         <RowDefinition/>
                     </Grid.RowDefinitions>
-                    <Image x:Name="ArrowImage" Source="/arrow.png" Grid.Row="0" />
-                    <Grid x:Name="AnimationPanel" Grid.Row="1">
-                        <Grid.Background>
-                            <ImageBrush ImageSource="/circle_bg.png" Stretch="Uniform"/>
-                        </Grid.Background>
-                        <Image x:Name="rotatingArrow" Stretch="None" Source="/rotating_arrow.png"
-                               RenderTransformOrigin="0.5,4.17" Margin="0,0,0,219"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" >
-                        </Image>
-                    </Grid>
+                    <Image x:Name="ArrowImage" Source="/arrows_down.png" Grid.Row="0" />
+                    <Viewbox x:Name="AnimationPanel" Grid.Row="1">
+                        <Grid>
+                            <Image Source="/gradient_circle.png" RenderTransformOrigin="0.5,0.5">
+                                <Image.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform/>
+                                        <SkewTransform/>
+                                        <RotateTransform Angle="0.35"/>
+                                        <TranslateTransform/>
+                                    </TransformGroup>
+                                </Image.RenderTransform>
+                            </Image>
+                            <Image x:Name="rotatingArrow" Stretch="Uniform" Source="/arrow_up.png"
+                               RenderTransformOrigin="0.5,13.6" Margin="0,0,0,520"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Width="20" Height="20" >
+                                <Image.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform/>
+                                        <SkewTransform/>
+                                        <RotateTransform Angle="0"/>
+                                        <TranslateTransform/>
+                                    </TransformGroup>
+                                </Image.RenderTransform>
+                            </Image>
+                        </Grid>
+                    </Viewbox>
                     <TextBlock x:Name="ExplosionLabel" Grid.Row="1"
                            VerticalAlignment="Center" HorizontalAlignment="Center"
                            FontSize="24" FontFamily="Yu Gothic UI"/>
                 </Grid>
             </Grid>
             <!-- right column -->
-            <Grid Grid.Column="2" x:Name="LogFrame">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="0.1*"/>
-                        <RowDefinition/>
-                        <RowDefinition Height="0.15*"/>
-                        <RowDefinition Height="0.15*"/>
-                    </Grid.RowDefinitions>
+            <Grid x:Name="LogGrid" Grid.Column="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="0.1*"/>
+                    <RowDefinition Height="0.75*"/>
+                    <RowDefinition Height="0.15*"/>
+                </Grid.RowDefinitions>
 
-                    <Button Content="Start" Grid.Column="0" Grid.Row="0" Click="StartBeatbox"/>
-                    <Button Content="Stop" Grid.Column="1" Grid.Row="0" Click="StopBeatbox"/>
-                    <ScrollViewer x:Name="ScrollViewer" Margin="0,10,0,10" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
+                <Button Content="Start" Grid.Column="0" Grid.Row="0" Click="StartBeatbox"/>
+                <Button Content="Stop" Grid.Column="1" Grid.Row="0" Click="StopBeatbox"/>
+
+                <ScrollViewer x:Name="ScrollViewer" Margin="0,10,0,10" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2">
+                    <Viewbox>
                         <TextBlock x:Name="Log" Text="" TextWrapping="Wrap"/>
-                    </ScrollViewer>
-                    <Label Content="Damage:" Grid.Column="0" Grid.Row="2"/>
-                    <Label Content="Next level at:" Grid.Column="0" Grid.Row="3"/>
-                    <Label x:Name="CurrentDamageDoneValue" Grid.Column="1" Grid.Row="2" HorizontalAlignment="Right"/>
-                    <Label x:Name="NextLevelAtValue" Grid.Column="1" Grid.Row="3" HorizontalAlignment="Right"/>
-                </Grid>
+                    </Viewbox>
+                </ScrollViewer>
+
+                <Viewbox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <Label Content="Damage:" Grid.Column="0" Grid.Row="0"/>
+                        <Label Content="Next level at:" Grid.Column="0" Grid.Row="1"/>
+                        <Label x:Name="CurrentDamageDoneValue" Content="0" Grid.Column="1" Grid.Row="0" HorizontalAlignment="Right"/>
+                        <Label x:Name="NextLevelAtValue" Content="0" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Right"/>
+
+                    </Grid>
+                </Viewbox>
             </Grid>
         </Grid>
+
     </DockPanel>
 </Window>

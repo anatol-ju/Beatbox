@@ -7,16 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="arrow.png" />
-    <None Remove="circle_01.png" />
-    <None Remove="circle_bg.png" />
+    <None Remove="arrow_down.png" />
+    <None Remove="arrow_up.png" />
+    <None Remove="gradient_circle.png" />
+    <None Remove="res\arrow_down.png" />
+    <None Remove="res\arrow_up.png" />
+    <None Remove="res\gradient_circle.png" />
     <None Remove="rotating_arrow.png" />
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="arrow.png" />
-    <Resource Include="circle_01.png" />
-    <Resource Include="circle_bg.png" />
+    <Resource Include="res\arrow_down.png" />
+    <Resource Include="res\arrow_up.png" />
+    <Resource Include="res\gradient_circle.png" />
     <Resource Include="rotating_arrow.png" />
   </ItemGroup>
 

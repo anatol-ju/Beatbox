@@ -1,10 +1,12 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -39,6 +41,7 @@ namespace Beatbox
         private static double convertRatioAP = 1.2;    // increases the damage
         private static double convertRatioCR = 1.2;     // increases crit chance
         private static double convertRatioHR = 1.05;     // decreases attack rate
+        private static double convertRatioXP = 1.15;     // decreases xp
 
         private static BackgroundWorker worker;
 
@@ -51,9 +54,17 @@ namespace Beatbox
         private static int animationMaxFontSize = 30;
         private static bool isChangingRate = false;
 
+        // for resize listener
+        const int WM_SIZING = 0x214;
+        const int WM_EXITSIZEMOVE = 0x232;
+        private static bool WindowWasResized = false;
+        private double initFrameWidth;
+        private double initFrameHeight;
+
         public MainWindow()
         {
             InitializeComponent();
+            this.Loaded += MainWindow_Loaded;
         }
 
         /// <summary>
@@ -77,6 +88,9 @@ namespace Beatbox
             LevelValue.Content = 0;
             CurrentDamageDoneValue.Content = 0;
             NextLevelAtValue.Content = 100;
+
+            initFrameHeight = ContentFrame.ActualHeight;
+            initFrameWidth = ContentFrame.ActualWidth;
         }
 
         private void InitWorker()
@@ -304,7 +318,7 @@ namespace Beatbox
         private void UpdateAttackRate()
         {
             currentAttackRate = (int) (baseAttackRate / Math.Pow(convertRatioHR, currentHR - 1));
-            AttackRateValue.Content = currentAttackRate / 1000.0;
+            AttackRateValue.Content = Math.Round(currentAttackRate / 1000.0,2);
             isChangingRate = true;
         }
 
@@ -314,7 +328,7 @@ namespace Beatbox
         private void UpdateLevelConstraints()
         {
             currentLevel += 1;
-            maxDamageValueForLevel = maxDamageValueForLevel * currentLevel;
+            maxDamageValueForLevel = (int)(maxDamageValueForLevel * Math.Pow(convertRatioXP,currentLevel));
             LevelValue.Content = currentLevel;
             NextLevelAtValue.Content = maxDamageValueForLevel;
         }
@@ -350,7 +364,7 @@ namespace Beatbox
         private void UpdateDPS()
         {
             DamagePerSecondValue.Content =
-                currentCritChance * currentDamagePerHit * 1.75 / (2.0 * currentAttackRate / 1000);
+                Math.Round(currentCritChance * currentDamagePerHit * 1.75 / (2.0 * currentAttackRate / 1000),2);
         }
 
         /// <summary>
@@ -483,5 +497,53 @@ namespace Beatbox
                 AppendToLog("Enough hitting, going to stop now.", "\n");
             }
         }
+
+        private void HandlePanelResize(object sender, SizeChangedEventArgs e)
+        {
+            double width = (sender as DockPanel).ActualWidth;
+            double height = (sender as DockPanel).ActualHeight;
+            double resizeFactor = (initFrameHeight==0 ? 1 : height / initFrameHeight);
+
+            foreach (UIElement element in InfoGrid.Children)
+            {
+                if (element.GetType() == typeof(Label))
+                {
+                    Label label = (Label)element;
+                }
+            }
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // this two line have to be exactly onload
+            //HwndSource source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            //source.AddHook(new HwndSourceHook(WndProc));
+        }
+
+        private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_SIZING)
+            {
+                if (WindowWasResized == false)
+                {
+                    //    'indicate the the user is resizing and not moving the window
+                    WindowWasResized = true;
+                }
+            }
+
+            if (msg == WM_EXITSIZEMOVE)
+            {
+                // 'check that this is the end of resize and not move operation          
+                if (WindowWasResized == true)
+                {
+                    
+
+                    // 'set it back to false for the next resize/move
+                    WindowWasResized = false;
+                }
+            }
+            return IntPtr.Zero;
+        }
+
     }
 }
