@@ -13,14 +13,12 @@
     <None Remove="res\arrow_down.png" />
     <None Remove="res\arrow_up.png" />
     <None Remove="res\gradient_circle.png" />
-    <None Remove="rotating_arrow.png" />
   </ItemGroup>
 
   <ItemGroup>
     <Resource Include="res\arrow_down.png" />
     <Resource Include="res\arrow_up.png" />
     <Resource Include="res\gradient_circle.png" />
-    <Resource Include="rotating_arrow.png" />
   </ItemGroup>
 
 </Project>
