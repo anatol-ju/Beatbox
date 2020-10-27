@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -18,6 +19,7 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window
     {
+        private static string info = "Current version: 0.0.1-pre-release";
         private static int maxDamageValueForLevel = 100;
 
         private static int damagePerHit = 10;
@@ -545,5 +547,68 @@ namespace Beatbox
             return IntPtr.Zero;
         }
 
+        private void Menu_New_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(Process.GetCurrentProcess().MainModule.FileName);
+            Application.Current.Shutdown();
+        }
+
+        private void Menu_Open_Click(object sender, RoutedEventArgs e)
+        {
+            (sender as MenuItem).IsEnabled = false;
+        }
+
+        private void Menu_Save_Click(object sender, RoutedEventArgs e)
+        {
+            (sender as MenuItem).IsEnabled = false;
+        }
+
+        private void Menu_Exit_Click(object sender, RoutedEventArgs e)
+        {
+            worker.CancelAsync();
+            circleStoryboard.Stop();
+            explosionStoryboard.Stop();
+            worker.Dispose();
+            Environment.Exit(1);
+        }
+
+        private void Menu_Reset_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxButton button = MessageBoxButton.YesNo;
+            MessageBoxResult result = MessageBox.Show("Are you sure to reset all talent points?", "Reset Points", button);
+            if (result.Equals(MessageBoxResult.Yes))
+            {
+                worker.CancelAsync();
+                circleStoryboard.Stop();
+                explosionStoryboard.Stop();
+                // make sure worker is finished before reset
+                while (worker.IsBusy)
+                {
+                    Thread.Sleep(100);
+                }
+                currentAP = 1;
+                currentCR = 1;
+                currentHR = 1;
+                currentDamagePerHit = damagePerHit;
+                currentAttackRate = baseAttackRate;
+                currentCritChance = baseCritChance;
+
+                availablePoints = currentLevel;
+                if (currentLevel > 0)
+                {
+                    ShowIncreaseButtons();
+                }
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        private void Menu_Info_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxButton button = MessageBoxButton.OK;
+            MessageBox.Show(info, "About this application", button);
+        }
     }
 }

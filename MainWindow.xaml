@@ -11,18 +11,17 @@
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
-                <MenuItem Header="_New" />
-                <MenuItem Header="_Open" />
-                <MenuItem Header="_Save" />
+                <MenuItem Header="_New" Click="Menu_New_Click" />
+                <MenuItem Header="_Open" Click="Menu_Open_Click" />
+                <MenuItem Header="_Save" Click="Menu_Save_Click" />
                 <Separator />
-                <MenuItem Header="_Exit" />
+                <MenuItem Header="_Exit" Click="Menu_Exit_Click" />
             </MenuItem>
             <MenuItem Header="Edit">
-                <MenuItem Header="Reset Points" />
+                <MenuItem Header="Reset Points" Click="Menu_Reset_Click" />
                 <MenuItem Header="Hard Reset" />
             </MenuItem>
-            <MenuItem Header="Info">
-            </MenuItem>
+            <MenuItem Header="Info" Click="Menu_Info_Click"/>
         </Menu>
         <!-- Shows information when leveled up or points available -->
 
