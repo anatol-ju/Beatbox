@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -10,6 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Xml.Serialization;
 
 namespace Beatbox
 {
@@ -67,6 +70,7 @@ namespace Beatbox
         {
             InitializeComponent();
             this.Loaded += MainWindow_Loaded;
+
         }
 
         /// <summary>
@@ -98,7 +102,6 @@ namespace Beatbox
         private void InitWorker()
         {
             System.Diagnostics.Debug.WriteLine("Worker started...");
-
             worker = new BackgroundWorker();
             worker.WorkerReportsProgress = true;
             worker.WorkerSupportsCancellation = true;
@@ -547,6 +550,38 @@ namespace Beatbox
             return IntPtr.Zero;
         }
 
+        private static void WriteToXmlFile<T>(string filePath, T objectToWrite, bool append = false) where T : new()
+        {
+            TextWriter writer = null;
+            try
+            {
+                var serializer = new XmlSerializer(typeof(T));
+                writer = new StreamWriter(filePath, append);
+                serializer.Serialize(writer, objectToWrite);
+            }
+            finally
+            {
+                if (writer != null)
+                    writer.Close();
+            }
+        }
+
+        private static T ReadFromXmlFile<T>(string filePath) where T : new()
+        {
+            TextReader reader = null;
+            try
+            {
+                var serializer = new XmlSerializer(typeof(T));
+                reader = new StreamReader(filePath);
+                return (T)serializer.Deserialize(reader);
+            }
+            finally
+            {
+                if (reader != null)
+                    reader.Close();
+            }
+        }
+
         private void Menu_New_Click(object sender, RoutedEventArgs e)
         {
             Process.Start(Process.GetCurrentProcess().MainModule.FileName);
@@ -555,12 +590,70 @@ namespace Beatbox
 
         private void Menu_Open_Click(object sender, RoutedEventArgs e)
         {
-            (sender as MenuItem).IsEnabled = false;
+            string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            path += "/beatbox.xml";
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.FileName = "beatbox_save";
+            dlg.DefaultExt = ".xml";
+
+            // Show save file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process save file dialog box results
+            if (result == true)
+            {
+                // Save document
+                path = dlg.FileName;
+            }
+
+            BeatboxSave save = ReadFromXmlFile<BeatboxSave>(path);
+            currentLevel = save.currentLevel;
+            currentXP = save.currentXP;
+            currentRecord = save.currentRecord;
+            availablePoints = save.availablePoints;
+            currentAP = save.currentAP;
+            currentCR = save.currentCR;
+            currentHR = save.currentHR;
+            currentCritChance = save.currentCritChance;
+            currentDamagePerHit = save.currentDamagePerHit;
+            currentAttackRate = save.currentAttackRate;
+            overdraft = save.overdraft;
+            sumDamage = save.sumDamage;
         }
 
         private void Menu_Save_Click(object sender, RoutedEventArgs e)
         {
-            (sender as MenuItem).IsEnabled = false;
+            string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            path += "/beatbox.xml";
+            SaveFileDialog dlg = new SaveFileDialog();
+            dlg.FileName = "beatbox_save";
+            dlg.DefaultExt = ".xml";
+
+            // Show save file dialog box
+            Nullable<bool> result = dlg.ShowDialog();
+
+            // Process save file dialog box results
+            if (result == true)
+            {
+                // Save document
+                path = dlg.FileName;
+            }
+
+            BeatboxSave save = BeatboxSave.Instance;
+            save.currentLevel = currentLevel;
+            save.currentXP = currentXP;
+            save.currentRecord = currentRecord;
+            save.availablePoints = availablePoints;
+            save.currentAP = currentAP;
+            save.currentCR = currentCR;
+            save.currentHR = currentHR;
+            save.currentCritChance = currentCritChance;
+            save.currentDamagePerHit = currentDamagePerHit;
+            save.currentAttackRate = currentAttackRate;
+            save.overdraft = overdraft;
+            save.sumDamage = sumDamage;
+
+            WriteToXmlFile(path, save);
         }
 
         private void Menu_Exit_Click(object sender, RoutedEventArgs e)
