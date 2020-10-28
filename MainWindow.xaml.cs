@@ -46,7 +46,7 @@ namespace Beatbox
         private static double convertRatioAP = 1.2;    // increases the damage
         private static double convertRatioCR = 1.2;     // increases crit chance
         private static double convertRatioHR = 1.05;     // decreases attack rate
-        private static double convertRatioXP = 1.15;     // decreases xp
+        private static double convertRatioXP = 1.05;     // decreases xp
 
         private static BackgroundWorker worker;
 
@@ -69,7 +69,7 @@ namespace Beatbox
         public MainWindow()
         {
             InitializeComponent();
-            this.Loaded += MainWindow_Loaded;
+            //this.Loaded += MainWindow_Loaded;
 
         }
 
@@ -501,53 +501,6 @@ namespace Beatbox
                 circleStoryboard.Stop();
                 AppendToLog("Enough hitting, going to stop now.", "\n");
             }
-        }
-
-        private void HandlePanelResize(object sender, SizeChangedEventArgs e)
-        {
-            double width = (sender as DockPanel).ActualWidth;
-            double height = (sender as DockPanel).ActualHeight;
-            double resizeFactor = (initFrameHeight==0 ? 1 : height / initFrameHeight);
-
-            foreach (UIElement element in InfoGrid.Children)
-            {
-                if (element.GetType() == typeof(Label))
-                {
-                    Label label = (Label)element;
-                }
-            }
-        }
-
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            // this two line have to be exactly onload
-            //HwndSource source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
-            //source.AddHook(new HwndSourceHook(WndProc));
-        }
-
-        private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        {
-            if (msg == WM_SIZING)
-            {
-                if (WindowWasResized == false)
-                {
-                    //    'indicate the the user is resizing and not moving the window
-                    WindowWasResized = true;
-                }
-            }
-
-            if (msg == WM_EXITSIZEMOVE)
-            {
-                // 'check that this is the end of resize and not move operation          
-                if (WindowWasResized == true)
-                {
-                    
-
-                    // 'set it back to false for the next resize/move
-                    WindowWasResized = false;
-                }
-            }
-            return IntPtr.Zero;
         }
 
         private static void WriteToXmlFile<T>(string filePath, T objectToWrite, bool append = false) where T : new()

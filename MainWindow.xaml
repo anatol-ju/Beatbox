@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Beatbox - The Ultimate Damage-Dealer" Height="350" Width="800"
         x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="CanResize">
-    <DockPanel x:Name="ContentFrame" SizeChanged="HandlePanelResize">
+    <DockPanel x:Name="ContentFrame">
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
@@ -114,7 +114,7 @@
                             <ColumnDefinition Width="1.5*"/>
                         </Grid.ColumnDefinitions>
                         <Button Content="Start" Grid.Column="0" Click="StartBeatbox"/>
-                        <Image x:Name="ArrowImage" Source="/res/arrows_down.png" Grid.Column="1" />
+                        <Image x:Name="ArrowImage" Source="/res/arrow_down.png" Grid.Column="1" />
                         <Button Content="Stop" Grid.Column="2" Click="StopBeatbox"/>
                     </Grid>
                     <Viewbox x:Name="AnimationPanel" Grid.Row="1">
