@@ -44,6 +44,8 @@ namespace Beatbox
         private static int overdraft = 0;
         private static int sumDamage = 0;
 
+        private static int attackRateOffset = 0;
+
         private static double convertRatioAP = 1.2;    // increases the damage
         private static double convertRatioCR = 1.2;     // increases crit chance
         private static double convertRatioHR = 1.05;     // decreases attack rate
@@ -177,8 +179,8 @@ namespace Beatbox
         {
             System.Diagnostics.Debug.WriteLine("Doing work");
             
-            currentXP = Math.Max(0, overdraft);
-            while(currentXP < maxDamageValueForLevel)
+            //currentXP = Math.Max(0, overdraft);
+            while(true)
             {
                 // if cancelation is needed, see "completed" method
                 // call worker.CancelAsync() from UI to set CancellationPending
@@ -187,16 +189,24 @@ namespace Beatbox
                     e.Cancel = true;
                     return;
                 }
+
+                Thread.Sleep(currentAttackRate - attackRateOffset);
+
                 currentHit = CalcDamageValue();
                 currentXP += currentHit;
                 sumDamage += currentHit;
                 System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, currentXP);
                 overdraft = currentXP - maxDamageValueForLevel;
+                
                 // must be a percentage
                 int percentage = (int)(100 * currentXP / (double)maxDamageValueForLevel);
                 (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
 
-                Thread.Sleep(currentAttackRate);
+                if (overdraft >= 0)
+                {
+                    currentXP = overdraft;
+                    return;
+                }
             }
         }
 
