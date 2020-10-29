@@ -38,6 +38,7 @@ namespace Beatbox
         private static int currentAttackRate = baseAttackRate;
         private static double currentCritChance = 5.0;
         private static int currentRecord = 0;
+        private static int currentHit = 0;
 
         private static int availablePoints = 0;
         private static int overdraft = 0;
@@ -81,7 +82,7 @@ namespace Beatbox
         private void Window_ContentRendered(object sender, EventArgs e)
         {
             InitWorker();
-            InitCircleAnimation();
+            InitRotateAnimation();
             InitExplosionAnimation();
             HideIncreaseButtons();
             // init UI
@@ -115,10 +116,11 @@ namespace Beatbox
         /// Update the duration later using
         /// <code>rotateAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));</code>
         /// </summary>
-        private void InitCircleAnimation()
+        private void InitRotateAnimation()
         {
             rotateAnimation = new DoubleAnimation();
             circleStoryboard = new Storyboard();
+            circleStoryboard.Completed += new EventHandler(CircleStoryboard_Completed);
 
             rotateAnimation.From = 0;
             rotateAnimation.To = 360;
@@ -174,7 +176,7 @@ namespace Beatbox
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Doing work");
-            int dmg = 0;
+            
             currentXP = Math.Max(0, overdraft);
             while(currentXP < maxDamageValueForLevel)
             {
@@ -185,14 +187,14 @@ namespace Beatbox
                     e.Cancel = true;
                     return;
                 }
-                dmg = CalcDamageValue();
-                currentXP += dmg;
-                sumDamage += dmg;
-                System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", dmg, currentXP);
+                currentHit = CalcDamageValue();
+                currentXP += currentHit;
+                sumDamage += currentHit;
+                System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, currentXP);
                 overdraft = currentXP - maxDamageValueForLevel;
                 // must be a percentage
                 int percentage = (int)(100 * currentXP / (double)maxDamageValueForLevel);
-                (sender as BackgroundWorker).ReportProgress(percentage, dmg);
+                (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
 
                 Thread.Sleep(currentAttackRate);
             }
@@ -207,7 +209,6 @@ namespace Beatbox
         {
             System.Diagnostics.Debug.WriteLine("progress changed");
             XPBar.Value = e.ProgressPercentage;
-            FireExplosionEvent((int)e.UserState, (int)e.UserState > currentDamagePerHit);
             UpdateDPS();
             UpdateRecordDamage((int)e.UserState);
             AppendToLog((int)e.UserState, "\n");
@@ -263,10 +264,15 @@ namespace Beatbox
             System.Diagnostics.Debug.WriteLine("Storyboard completed.");
             if (isChangingRate)
             {
-                UpdateAnimation(currentAttackRate);
+                UpdateRotateAnimation(currentAttackRate);
                 isChangingRate = false;
             }
             circleStoryboard.Begin();
+        }
+
+        private void CircleStoryboard_Completed(object sender, EventArgs e)
+        {
+            FireExplosionEvent(currentHit, currentHit > currentDamagePerHit);
         }
 
         private int CalcDamageValue()
@@ -311,9 +317,9 @@ namespace Beatbox
             explosionStoryboard.Begin();
         }
 
-        private void UpdateAnimation(int duration)
+        private void UpdateRotateAnimation(int durationInMilliSec)
         {
-            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(duration));
+            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(durationInMilliSec));
             rotateAnimation.Duration = circleStoryboard.Duration;
         }
 
@@ -503,6 +509,13 @@ namespace Beatbox
             }
         }
 
+        /// <summary>
+        /// Save object data into XML file.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="filePath"></param>
+        /// <param name="objectToWrite"></param>
+        /// <param name="append"></param>
         private static void WriteToXmlFile<T>(string filePath, T objectToWrite, bool append = false) where T : new()
         {
             TextWriter writer = null;
@@ -519,6 +532,12 @@ namespace Beatbox
             }
         }
 
+        /// <summary>
+        /// Load data from XML file to restore previous game.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         private static T ReadFromXmlFile<T>(string filePath) where T : new()
         {
             TextReader reader = null;
