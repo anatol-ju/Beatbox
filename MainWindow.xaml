@@ -7,7 +7,7 @@
         mc:Ignorable="d"
         Title="Beatbox - The Ultimate Damage-Dealer" Height="350" Width="800"
         x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="CanResize">
-    <DockPanel x:Name="ContentFrame">
+    <DockPanel x:Name="ContentFrame" KeyDown="ContentFrame_KeyDown">
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
@@ -106,6 +106,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="0.1*"/>
                         <RowDefinition/>
+                        <RowDefinition Height="0.1*"/>
                     </Grid.RowDefinitions>
                     <Grid HorizontalAlignment="Stretch">
                         <Grid.ColumnDefinitions>
@@ -113,11 +114,11 @@
                             <ColumnDefinition Width="0.7*"/>
                             <ColumnDefinition Width="1.5*"/>
                         </Grid.ColumnDefinitions>
-                        <Button Content="Start" Grid.Column="0" Click="StartBeatbox"/>
+                        <Button x:Name="StartButton" Content="Start" Grid.Column="0" Click="StartBeatbox"/>
                         <Image x:Name="ArrowImage" Source="/res/arrow_down.png" Grid.Column="1" />
-                        <Button Content="Stop" Grid.Column="2" Click="StopBeatbox"/>
+                        <Button x:Name="StopButton" Content="Stop" Grid.Column="2" Click="StopBeatbox"/>
                     </Grid>
-                    <Viewbox x:Name="AnimationPanel" Grid.Row="1">
+                    <Viewbox x:Name="AnimationPanel" Grid.Row="1" VerticalAlignment="Bottom">
                         <Grid>
                             <Image Source="/res/gradient_circle.png" RenderTransformOrigin="0.5,0.5">
                                 <Image.RenderTransform>
@@ -147,6 +148,9 @@
                         <TextBlock x:Name="ExplosionLabel"
                            VerticalAlignment="Center" HorizontalAlignment="Center"
                            FontFamily="Yu Gothic UI"/>
+                    </Viewbox>
+                    <Viewbox Grid.Row="2" Stretch="Uniform">
+                        <Label Content="Use the 'Space' key shortly before the arrows touch to make next strike a critical hit."/>
                     </Viewbox>
                 </Grid>
             </Grid>

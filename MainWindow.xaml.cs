@@ -5,10 +5,13 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -44,15 +47,23 @@ namespace Beatbox
         private static int overdraft = 0;
         private static int sumDamage = 0;
 
-        private static int attackRateOffset = 0;
+        private static int attackRateOffset = 200;
+        private static System.Timers.Timer timer;
+        private static bool isUserInputCrit = false;
+        private static bool isKeyDown = false;
+        private static int timerCount = 0;
+        private static int timerInterval = 100;
 
+        // conversion factors
         private static double convertRatioAP = 1.2;    // increases the damage
         private static double convertRatioCR = 1.2;     // increases crit chance
         private static double convertRatioHR = 1.05;     // decreases attack rate
         private static double convertRatioXP = 1.05;     // decreases xp
 
+        // calculation
         private static BackgroundWorker worker;
 
+        // animation
         private Storyboard circleStoryboard;
         private Storyboard explosionStoryboard;
         private DoubleAnimation rotateAnimation;
@@ -69,11 +80,43 @@ namespace Beatbox
         private double initFrameWidth;
         private double initFrameHeight;
 
+        // Global HotKeys
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        private const int HOTKEY_ID = 9000;
+
+        //Modifiers:
+        private const uint MOD_NONE = 0x0000; //[NONE]
+        private const uint MOD_ALT = 0x0001; //ALT
+        private const uint MOD_CONTROL = 0x0002; //CTRL
+        private const uint MOD_SHIFT = 0x0004; //SHIFT
+        private const uint MOD_WIN = 0x0008; //WINDOWS
+                                             
+        private const uint VK_CAPITAL = 0x14; //CAPS LOCK:
+        private const uint VK_SPACE = 0x20; //SPACE BAR
+
+        private HwndSource source;
+
         public MainWindow()
         {
             InitializeComponent();
             //this.Loaded += MainWindow_Loaded;
+            timer = new System.Timers.Timer(timerInterval);
+            timer.Elapsed += TimedEvent;
+        }
 
+        private void StopButton_KeyDown(object sender, KeyEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private void StartButton_KeyDown(object sender, KeyEventArgs e)
+        {
+            e.Handled = true;
         }
 
         /// <summary>
@@ -172,6 +215,10 @@ namespace Beatbox
 
         /// <summary>
         /// Method for the BackgroundWorker tasks.
+        /// It calculates the current damage from the hit by asking the <code>CalcDamageValue()</code> method,
+        /// then updates the values for required UI labels and further calculations.
+        /// When this is done, the worker has to wait until the rotation animation is completed before
+        /// using the calculated values to update the UI.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -190,8 +237,6 @@ namespace Beatbox
                     return;
                 }
 
-                Thread.Sleep(currentAttackRate - attackRateOffset);
-
                 currentHit = CalcDamageValue();
                 currentXP += currentHit;
                 sumDamage += currentHit;
@@ -200,6 +245,10 @@ namespace Beatbox
                 
                 // must be a percentage
                 int percentage = (int)(100 * currentXP / (double)maxDamageValueForLevel);
+
+                Thread.Sleep(currentAttackRate);
+                // use System.Timers.Timer maybe
+
                 (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
 
                 if (overdraft >= 0)
@@ -278,6 +327,8 @@ namespace Beatbox
                 isChangingRate = false;
             }
             circleStoryboard.Begin();
+            isKeyDown = false;
+            timer.Start();
         }
 
         private void CircleStoryboard_Completed(object sender, EventArgs e)
@@ -294,9 +345,10 @@ namespace Beatbox
 
             currentCritChance = baseCritChance * Math.Pow(convertRatioCR, currentCR - 1);
             bool check = random.NextDouble() * 100 + 1 <= currentCritChance;
-            if (check)
+            if (check || isUserInputCrit)
             {
                 returned *= 2;
+                isUserInputCrit = false;
             }
 
             return returned;
@@ -505,6 +557,7 @@ namespace Beatbox
             {
                 worker.RunWorkerAsync();
                 circleStoryboard.Begin();
+                timer.Start();
                 AppendToLog("Starting to hit stuff...", "\n");
             }
         }
@@ -515,6 +568,7 @@ namespace Beatbox
             {
                 worker.CancelAsync();
                 circleStoryboard.Stop();
+                timer.Stop();
                 AppendToLog("Enough hitting, going to stop now.", "\n");
             }
         }
@@ -642,6 +696,8 @@ namespace Beatbox
         {
             worker.CancelAsync();
             circleStoryboard.Stop();
+            timer.Stop();
+            timer.Dispose();
             explosionStoryboard.Stop();
             worker.Dispose();
             Environment.Exit(1);
@@ -655,6 +711,8 @@ namespace Beatbox
             {
                 worker.CancelAsync();
                 circleStoryboard.Stop();
+                timer.Stop();
+                timer.Dispose();
                 explosionStoryboard.Stop();
                 // make sure worker is finished before reset
                 while (worker.IsBusy)
@@ -684,6 +742,86 @@ namespace Beatbox
         {
             MessageBoxButton button = MessageBoxButton.OK;
             MessageBox.Show(info, "About this application", button);
+        }
+
+        private static void TimedEvent(object sender, ElapsedEventArgs e)
+        {
+            if (isKeyDown)
+            {
+                timer.Stop();
+                int check = currentAttackRate - timerCount * timerInterval;
+                System.Diagnostics.Debug.WriteLine("Check {0}", check);
+
+                if ((check >= 0) && (check < attackRateOffset))
+                {
+                    isUserInputCrit = true;
+                    System.Diagnostics.Debug.WriteLine("crit");
+                }
+                timerCount = 0;
+            }
+            else
+            {
+                timerCount++;
+            }
+        }
+
+        private void ContentFrame_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.IsRepeat || isKeyDown)
+            {
+                return;
+            }
+            if (e.Key == Key.Space)
+            {
+                System.Diagnostics.Debug.WriteLine("Space key pressed.");
+                isKeyDown = true;
+            }
+        }
+
+        // global HotKey
+        private IntPtr _windowHandle;
+        private HwndSource _source;
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+
+            _windowHandle = new WindowInteropHelper(this).Handle;
+            _source = HwndSource.FromHwnd(_windowHandle);
+            _source.AddHook(HwndHook);
+
+            //RegisterHotKey(_windowHandle, HOTKEY_ID, MOD_CONTROL, VK_CAPITAL); //CTRL + CAPS_LOCK
+            RegisterHotKey(_windowHandle, HOTKEY_ID, MOD_NONE, VK_SPACE);
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _source.RemoveHook(HwndHook);
+            UnregisterHotKey(_windowHandle, HOTKEY_ID);
+            base.OnClosed(e);
+        }
+
+        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_HOTKEY = 0x0312;
+            switch (msg)
+            {
+                case WM_HOTKEY:
+                    switch (wParam.ToInt32())
+                    {
+                        case HOTKEY_ID:
+                            int vkey = (((int)lParam >> 16) & 0xFFFF);
+                            if (vkey == VK_SPACE)
+                            {
+                                //handle global hot key here...
+                                isKeyDown = true;
+                            }
+                            handled = true;
+                            break;
+                    }
+                    break;
+            }
+            return IntPtr.Zero;
         }
     }
 }
