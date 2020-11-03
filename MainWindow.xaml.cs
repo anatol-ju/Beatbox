@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
@@ -64,14 +65,19 @@ namespace Beatbox
         private static BackgroundWorker worker;
 
         // animation
-        private Storyboard circleStoryboard;
-        private Storyboard explosionStoryboard;
-        private DoubleAnimation rotateAnimation;
-        private DoubleAnimation opacityAnimation;
-        private DoubleAnimation sizeAnimation;
+        private static Storyboard circleStoryboard;
+        private static Storyboard explosionStoryboard;
+        private static Storyboard critMessageStoryboard;
+        private static DoubleAnimation rotateAnimation;
+        private static DoubleAnimation opacityAnimation;
+        private static DoubleAnimation sizeAnimation;
+        private static DoubleAnimation critMessageAnimation;
 
         private static int animationMaxFontSize = 30;
         private static bool isChangingRate = false;
+        private static bool isWorkerUnpaused = false;
+        private static bool isWorkerProgressChanged = false;
+        private static bool isRotateAnimationCompleted = false;
 
         // for resize listener
         const int WM_SIZING = 0x214;
@@ -129,6 +135,7 @@ namespace Beatbox
             InitWorker();
             InitRotateAnimation();
             InitExplosionAnimation();
+            InitCritMessageAnimation();
             HideIncreaseButtons();
             // init UI
             ValueAP.Content = currentAP;
@@ -140,6 +147,8 @@ namespace Beatbox
             LevelValue.Content = 0;
             CurrentDamageDoneValue.Content = 0;
             NextLevelAtValue.Content = 100;
+            CritLabel.Text = "Crit!";
+            CritLabel.Opacity = 0.0;
 
             initFrameHeight = ContentFrame.ActualHeight;
             initFrameWidth = ContentFrame.ActualWidth;
@@ -204,6 +213,7 @@ namespace Beatbox
             Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath(TextBlock.OpacityProperty));
             Storyboard.SetTarget(sizeAnimation, ExplosionLabel);
             Storyboard.SetTargetProperty(sizeAnimation, new PropertyPath(TextBlock.FontSizeProperty));
+
             explosionStoryboard.Children.Add(opacityAnimation);
             explosionStoryboard.Children.Add(sizeAnimation);
             explosionStoryboard.Duration = opacityAnimation.Duration;
@@ -211,6 +221,24 @@ namespace Beatbox
             //explosionStoryboard.Completed += new EventHandler(ExplosionStoryboard_Completed);
 
             Resources.Add("explosionStoryboard", explosionStoryboard);
+        }
+
+        private void InitCritMessageAnimation()
+        {
+            critMessageAnimation = new DoubleAnimation();
+            critMessageStoryboard = new Storyboard();
+
+            critMessageAnimation.From = 0.0;
+            critMessageAnimation.To = 1.0;
+            critMessageAnimation.AutoReverse = true;
+            critMessageAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(1000));
+
+            critMessageStoryboard.Children.Add(critMessageAnimation);
+            critMessageStoryboard.Duration = critMessageAnimation.Duration;
+            critMessageStoryboard.AutoReverse = critMessageAnimation.AutoReverse;
+
+            Storyboard.SetTarget(critMessageAnimation, CritLabel);
+            Storyboard.SetTargetProperty(critMessageAnimation, new PropertyPath(TextBlock.OpacityProperty));
         }
 
         /// <summary>
@@ -225,9 +253,8 @@ namespace Beatbox
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Doing work");
-            
             //currentXP = Math.Max(0, overdraft);
-            while(true)
+            while (true)
             {
                 // if cancelation is needed, see "completed" method
                 // call worker.CancelAsync() from UI to set CancellationPending
@@ -236,20 +263,21 @@ namespace Beatbox
                     e.Cancel = true;
                     return;
                 }
+                this.Dispatcher.Invoke(new Action(() => isWorkerProgressChanged = false));
 
                 currentHit = CalcDamageValue();
                 currentXP += currentHit;
                 sumDamage += currentHit;
                 System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, currentXP);
                 overdraft = currentXP - maxDamageValueForLevel;
-                
+
                 // must be a percentage
                 int percentage = (int)(100 * currentXP / (double)maxDamageValueForLevel);
 
+                (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
+
                 Thread.Sleep(currentAttackRate);
                 // use System.Timers.Timer maybe
-
-                (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
 
                 if (overdraft >= 0)
                 {
@@ -267,11 +295,12 @@ namespace Beatbox
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("progress changed");
+            
             XPBar.Value = e.ProgressPercentage;
-            UpdateDPS();
-            UpdateRecordDamage((int)e.UserState);
-            AppendToLog((int)e.UserState, "\n");
-            CurrentDamageDoneValue.Content = sumDamage;
+
+            CurrentDamageDoneValue.Content = e.ProgressPercentage * maxDamageValueForLevel / 100;
+
+            isWorkerProgressChanged = true;
         }
 
         /// <summary>
@@ -317,7 +346,14 @@ namespace Beatbox
             }
         }
 
-
+        /// <summary>
+        /// This method is called after every iteration of the DoubleAnimation.
+        /// It is used to synchronize showing of damage values and updating log, since
+        /// it is the main indicator for the user to see when next attacks occur.
+        /// The XP bar is still being updated by the background worker directly.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void RotateAnimation_Completed(object sender, EventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Storyboard completed.");
@@ -326,14 +362,30 @@ namespace Beatbox
                 UpdateRotateAnimation(currentAttackRate);
                 isChangingRate = false;
             }
-            circleStoryboard.Begin();
+
+            UpdateDPS();
+            UpdateRecordDamage(currentHit);
+
+            bool check = currentHit > currentDamagePerHit;
+            string separator = check ? " (critical strike)\n" : "\n";
+            AppendToLog(currentHit, separator);
+
+            FireExplosionEvent(currentHit, currentHit > currentDamagePerHit);
+
             isKeyDown = false;
+
             timer.Start();
+            isRotateAnimationCompleted = true;
         }
 
         private void CircleStoryboard_Completed(object sender, EventArgs e)
         {
-            FireExplosionEvent(currentHit, currentHit > currentDamagePerHit);
+            if (!worker.IsBusy)
+            {
+                worker.RunWorkerAsync();
+            }
+            isRotateAnimationCompleted = false;
+            circleStoryboard.Begin();
         }
 
         private int CalcDamageValue()
@@ -377,6 +429,28 @@ namespace Beatbox
                 sizeAnimation.To = animationMaxFontSize;
             }
             explosionStoryboard.Begin();
+        }
+
+        private void HandleCritMessage(int offset)
+        {
+            if (offset < 0)
+            {
+                return;
+            }
+            else if (offset <= attackRateOffset)
+            {
+                CritLabel.Text = "Perfect!";
+                isUserInputCrit = true;
+            }
+            else if (offset <= attackRateOffset * 2)
+            {
+                CritLabel.Text = "Close";
+            }
+            else
+            {
+                CritLabel.Text = "Missed";
+            }
+            critMessageStoryboard.Begin();
         }
 
         private void UpdateRotateAnimation(int durationInMilliSec)
@@ -455,7 +529,7 @@ namespace Beatbox
 
         private void UpdateCritChance()
         {
-            CritChanceValue.Content = currentCritChance;
+            CritChanceValue.Content = Math.Round(currentCritChance, 2);
         }
 
         /// <summary>
@@ -566,8 +640,8 @@ namespace Beatbox
         {
             if (worker.IsBusy)
             {
-                worker.CancelAsync();
                 circleStoryboard.Stop();
+                worker.CancelAsync();
                 timer.Stop();
                 AppendToLog("Enough hitting, going to stop now.", "\n");
             }
@@ -744,19 +818,14 @@ namespace Beatbox
             MessageBox.Show(info, "About this application", button);
         }
 
-        private static void TimedEvent(object sender, ElapsedEventArgs e)
+        private void TimedEvent(object sender, ElapsedEventArgs e)
         {
             if (isKeyDown)
             {
                 timer.Stop();
                 int check = currentAttackRate - timerCount * timerInterval;
                 System.Diagnostics.Debug.WriteLine("Check {0}", check);
-
-                if ((check >= 0) && (check < attackRateOffset))
-                {
-                    isUserInputCrit = true;
-                    System.Diagnostics.Debug.WriteLine("crit");
-                }
+                this.Dispatcher.BeginInvoke(new Action(() => HandleCritMessage(check)));
                 timerCount = 0;
             }
             else

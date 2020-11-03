@@ -19,7 +19,6 @@
             </MenuItem>
             <MenuItem Header="Edit">
                 <MenuItem Header="Reset Points" Click="Menu_Reset_Click" />
-                <MenuItem Header="Hard Reset" />
             </MenuItem>
             <MenuItem Header="Info" Click="Menu_Info_Click"/>
         </Menu>
@@ -39,8 +38,8 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="0.20*" />
-                <ColumnDefinition Width="Auto" MinWidth="400" />
+                <ColumnDefinition Width="0.2*" />
+                <ColumnDefinition Width="0.6*" MinWidth="400" />
                 <ColumnDefinition Width="0.2*" />
             </Grid.ColumnDefinitions>
             <!-- left column -->
@@ -149,6 +148,11 @@
                            VerticalAlignment="Center" HorizontalAlignment="Center"
                            FontFamily="Yu Gothic UI"/>
                     </Viewbox>
+                    <Viewbox Grid.Row="1" Stretch="Uniform" Margin="75,0,75,150">
+                        <TextBlock x:Name="CritLabel"
+                           VerticalAlignment="Top" HorizontalAlignment="Center"
+                           FontFamily="Yu Gothic UI" FontStyle="Italic"/>
+                    </Viewbox>
                     <Viewbox Grid.Row="2" Stretch="Uniform">
                         <Label Content="Use the 'Space' key shortly before the arrows touch to make next strike a critical hit."/>
                     </Viewbox>
@@ -172,7 +176,7 @@
                 </ScrollViewer>
 
                 <Viewbox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-                    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                    <Grid Width="{Binding Path=ActualWidth, ElementName=ScrollViewer}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition/>
