@@ -26,13 +26,14 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window
     {
-        private static string info = "Current version: 0.0.1-pre-release";
+        private static readonly string info = "Current version: 0.0.1-pre-release";
+        private static readonly int baseDamageValueForLevel = 100;
         private static int maxDamageValueForLevel = 100;
 
-        private static int damagePerHit = 10;
-        private static int baseAttackRate = 2500;       // in millisec
-        private static double baseCritChance = 5.0;
-
+        private static readonly int damagePerHit = 10;
+        private static readonly int baseAttackRate = 2500;       // in millisec
+        private static readonly double baseCritChance = 5.0;
+        #region running
         private static int currentXP = 0;
         private static int currentLevel = 0;
         private static int currentAP = 1;
@@ -47,24 +48,26 @@ namespace Beatbox
         private static int availablePoints = 0;
         private static int overdraft = 0;
         private static int sumDamage = 0;
-
-        private static int attackRateOffset = 200;
+        #endregion
+        private static readonly int attackRateOffset = 200;
         private static System.Timers.Timer timer;
         private static bool isUserInputCrit = false;
         private static bool isKeyDown = false;
         private static int timerCount = 0;
-        private static int timerInterval = 100;
+        private static readonly int timerInterval = 100;
 
-        // conversion factors
-        private static double convertRatioAP = 1.2;    // increases the damage
-        private static double convertRatioCR = 1.2;     // increases crit chance
-        private static double convertRatioHR = 1.05;     // decreases attack rate
-        private static double convertRatioXP = 1.05;     // decreases xp
+        #region conversion factors
+        private static readonly double convertRatioAP = 1.2;    // increases the damage
+        private static readonly double convertRatioCR = 1.2;     // increases crit chance
+        private static readonly double convertRatioHR = 1.05;     // decreases attack rate
+        private static readonly double convertRatioXP = 1.05;     // decreases xp
+        #endregion
 
         // calculation
         private static BackgroundWorker worker;
+        private static int workerCount = 0;
 
-        // animation
+        #region animation
         private static Storyboard circleStoryboard;
         private static Storyboard explosionStoryboard;
         private static Storyboard critMessageStoryboard;
@@ -73,16 +76,16 @@ namespace Beatbox
         private static DoubleAnimation sizeAnimation;
         private static DoubleAnimation critMessageAnimation;
 
-        private static int animationMaxFontSize = 30;
+        private static readonly int animationMaxFontSize = 30;
         private static bool isChangingRate = false;
         private static bool isWorkerUnpaused = false;
         private static bool isWorkerProgressChanged = false;
         private static bool isRotateAnimationCompleted = false;
+        #endregion
 
         // for resize listener
         const int WM_SIZING = 0x214;
         const int WM_EXITSIZEMOVE = 0x232;
-        private static bool WindowWasResized = false;
         private double initFrameWidth;
         private double initFrameHeight;
 
@@ -110,7 +113,7 @@ namespace Beatbox
         public MainWindow()
         {
             InitializeComponent();
-            //this.Loaded += MainWindow_Loaded;
+
             timer = new System.Timers.Timer(timerInterval);
             timer.Elapsed += TimedEvent;
         }
@@ -125,6 +128,7 @@ namespace Beatbox
             e.Handled = true;
         }
 
+        #region init
         /// <summary>
         /// Executes after window is rendered. It is required to update the progress bar.
         /// </summary>
@@ -141,12 +145,12 @@ namespace Beatbox
             ValueAP.Content = currentAP;
             ValueCR.Content = currentCR;
             ValueHR.Content = currentHR;
-            CurrentDamageValue.Content = "7 - 10";
-            CritChanceValue.Content = currentCritChance;
-            AttackRateValue.Content = currentAttackRate/1000.0;
+            ValueCurrentDamage.Content = "7 - 10";
+            ValueCritChance.Content = currentCritChance;
+            ValueAttackRate.Content = currentAttackRate/1000.0;
             LevelValue.Content = 0;
-            CurrentDamageDoneValue.Content = 0;
-            NextLevelAtValue.Content = 100;
+            ValueCurrentDamageDone.Content = 0;
+            ValueNextLevelAt.Content = 100;
             CritLabel.Text = "Crit!";
             CritLabel.Opacity = 0.0;
 
@@ -163,6 +167,7 @@ namespace Beatbox
             worker.DoWork += Worker_DoWork;
             worker.ProgressChanged += Worker_ProgressChanged;
             worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
+            workerCount = 0;
         }
 
         /// <summary>
@@ -240,6 +245,7 @@ namespace Beatbox
             Storyboard.SetTarget(critMessageAnimation, CritLabel);
             Storyboard.SetTargetProperty(critMessageAnimation, new PropertyPath(TextBlock.OpacityProperty));
         }
+        #endregion
 
         /// <summary>
         /// Method for the BackgroundWorker tasks.
@@ -253,7 +259,14 @@ namespace Beatbox
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Doing work");
-            //currentXP = Math.Max(0, overdraft);
+
+            // for the case the worker is too fast
+            if (workerCount > currentLevel)
+            {
+                System.Diagnostics.Debug.WriteLine("-- skipping --");
+                Thread.Sleep(500);
+            }
+            
             while (true)
             {
                 // if cancelation is needed, see "completed" method
@@ -295,10 +308,6 @@ namespace Beatbox
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("progress changed");
-            
-            XPBar.Value = e.ProgressPercentage;
-
-            CurrentDamageDoneValue.Content = e.ProgressPercentage * maxDamageValueForLevel / 100;
 
             isWorkerProgressChanged = true;
         }
@@ -326,6 +335,7 @@ namespace Beatbox
             }
             else    // normal continuation
             {
+                currentLevel+=1;
                 // update calculations and UI
                 ShowIncreaseButtons();
                 UpdateLevelConstraints();
@@ -342,6 +352,7 @@ namespace Beatbox
                     currentXP = 0;
                 }
 
+                workerCount++;
                 (sender as BackgroundWorker).RunWorkerAsync();
             }
         }
@@ -357,12 +368,16 @@ namespace Beatbox
         private void RotateAnimation_Completed(object sender, EventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Storyboard completed.");
+
             if (isChangingRate)
             {
                 UpdateRotateAnimation(currentAttackRate);
                 isChangingRate = false;
             }
 
+            ValueCurrentDamageDone.Content = currentXP;
+
+            UpdateProgressBar();
             UpdateDPS();
             UpdateRecordDamage(currentHit);
 
@@ -370,7 +385,7 @@ namespace Beatbox
             string separator = check ? " (critical strike)\n" : "\n";
             AppendToLog(currentHit, separator);
 
-            FireExplosionEvent(currentHit, currentHit > currentDamagePerHit);
+            FireExplosionEvent(currentHit, check);
 
             isKeyDown = false;
 
@@ -420,7 +435,7 @@ namespace Beatbox
             {
                 ExplosionLabel.FontWeight = FontWeights.Bold;
                 ExplosionLabel.FontStyle = FontStyles.Italic;
-                sizeAnimation.To = sizeAnimation.To * 1.5;
+                sizeAnimation.To *= 1.5;
             }
             else
             {
@@ -465,7 +480,7 @@ namespace Beatbox
         private void UpdateAttackRate()
         {
             currentAttackRate = (int) (baseAttackRate / Math.Pow(convertRatioHR, currentHR - 1));
-            AttackRateValue.Content = Math.Round(currentAttackRate / 1000.0,2);
+            ValueAttackRate.Content = Math.Round(currentAttackRate / 1000.0,2);
             isChangingRate = true;
         }
 
@@ -474,10 +489,9 @@ namespace Beatbox
         /// </summary>
         private void UpdateLevelConstraints()
         {
-            currentLevel += 1;
-            maxDamageValueForLevel = (int)(maxDamageValueForLevel * Math.Pow(convertRatioXP,currentLevel));
+            maxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP,currentLevel));
             LevelValue.Content = currentLevel;
-            NextLevelAtValue.Content = maxDamageValueForLevel;
+            ValueNextLevelAt.Content = maxDamageValueForLevel;
         }
 
         /// <summary>
@@ -490,7 +504,7 @@ namespace Beatbox
             sb.Append((int)(currentDamagePerHit * 0.75));
             sb.Append(" - ");
             sb.Append(currentDamagePerHit);
-            CurrentDamageValue.Content = sb.ToString();
+            ValueCurrentDamage.Content = sb.ToString();
             System.Diagnostics.Debug.WriteLine("currentMinDamage: {0}", (int)(currentDamagePerHit * 0.75));
             System.Diagnostics.Debug.WriteLine("currentMaxDamage: {0}", (int)(currentDamagePerHit * 0.75));
         }
@@ -523,13 +537,13 @@ namespace Beatbox
             if (dmg > currentRecord)
             {
                 currentRecord = dmg;
-                RecordDamageValue.Content = currentRecord;
+                ValueRecordDamage.Content = currentRecord;
             }
         }
 
         private void UpdateCritChance()
         {
-            CritChanceValue.Content = Math.Round(currentCritChance, 2);
+            ValueCritChance.Content = Math.Round(currentCritChance, 2);
         }
 
         /// <summary>
@@ -647,6 +661,7 @@ namespace Beatbox
             }
         }
 
+        #region serialization
         /// <summary>
         /// Save object data into XML file.
         /// </summary>
@@ -691,6 +706,7 @@ namespace Beatbox
                     reader.Close();
             }
         }
+        #endregion
 
         private void Menu_New_Click(object sender, RoutedEventArgs e)
         {
@@ -698,13 +714,17 @@ namespace Beatbox
             Application.Current.Shutdown();
         }
 
-        private void Menu_Open_Click(object sender, RoutedEventArgs e)
+        private void Menu_Load_Click(object sender, RoutedEventArgs e)
         {
+            StopBeatbox(StopButton, new System.Windows.RoutedEventArgs());
+            
             string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             path += "/beatbox.xml";
-            OpenFileDialog dlg = new OpenFileDialog();
-            dlg.FileName = "beatbox_save";
-            dlg.DefaultExt = ".xml";
+            OpenFileDialog dlg = new OpenFileDialog
+            {
+                FileName = "beatbox_save",
+                DefaultExt = ".xml"
+            };
 
             // Show save file dialog box
             Nullable<bool> result = dlg.ShowDialog();
@@ -729,15 +749,31 @@ namespace Beatbox
             currentAttackRate = save.currentAttackRate;
             overdraft = save.overdraft;
             sumDamage = save.sumDamage;
+
+            ValueCurrentDamageDone.Content = currentXP;
+            ValueRecordDamage.Content = currentRecord;
+            ValueAP.Content = currentAP;
+            ValueCR.Content = currentCR;
+            ValueHR.Content = currentHR;
+            ValueCritChance.Content = Math.Round(currentCritChance, 2);
+            string str = String.Format("{0} - {1}", (int)currentDamagePerHit*0.75, currentDamagePerHit);
+            ValueCurrentDamage.Content = str;
+            ValueAttackRate.Content = Math.Round(currentAttackRate / 1000.0, 2);
+            UpdateDPS();
+            UpdateLevelConstraints();
         }
 
         private void Menu_Save_Click(object sender, RoutedEventArgs e)
         {
+            StopBeatbox(StopButton, new System.Windows.RoutedEventArgs());
+
             string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             path += "/beatbox.xml";
-            SaveFileDialog dlg = new SaveFileDialog();
-            dlg.FileName = "beatbox_save";
-            dlg.DefaultExt = ".xml";
+            SaveFileDialog dlg = new SaveFileDialog
+            {
+                FileName = "beatbox_save",
+                DefaultExt = ".xml"
+            };
 
             // Show save file dialog box
             Nullable<bool> result = dlg.ShowDialog();
