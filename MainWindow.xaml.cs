@@ -36,18 +36,22 @@ namespace Beatbox
         #region running
         private static int currentXP = 0;
         private static int currentLevel = 0;
+            
         private static int currentAP = 1;
         private static int currentCR = 1;
         private static int currentHR = 1;
         private static int currentDamagePerHit = damagePerHit;
         private static int currentAttackRate = baseAttackRate;
-        private static double currentCritChance = 5.0;
+        private static double currentCritChance = baseCritChance;
         private static int currentRecord = 0;
         private static int currentHit = 0;
 
         private static int availablePoints = 0;
         private static int overdraft = 0;
         private static int sumDamage = 0;
+
+        private static int userSuccess = 0;
+        private static int continuousHit = 0;
         #endregion
         private static readonly int attackRateOffset = 200;
         private static System.Timers.Timer timer;
@@ -81,6 +85,63 @@ namespace Beatbox
         private static bool isWorkerUnpaused = false;
         private static bool isWorkerProgressChanged = false;
         private static bool isRotateAnimationCompleted = false;
+        #endregion
+
+        #region properties
+        public int CurrentLevel
+        {
+            get => currentLevel;
+            set
+            {
+                currentLevel = value;
+                CheckForMilestones("level", value);
+            }
+        }
+        public int CurrentAttackRate
+        {
+            get => currentAttackRate;
+            set
+            {
+                currentAttackRate = value;
+                CheckForMilestones("rate", value);
+            }
+        }
+        public int CurrentRecord
+        {
+            get => currentRecord;
+            set
+            {
+                currentRecord = value;
+                CheckForMilestones("record", value);
+            }
+        }
+        public int ContinuousHit
+        {
+            get => continuousHit;
+            set
+            {
+                continuousHit = value;
+                CheckForMilestones("continuous", value);
+            }
+        }
+        public int SumDamage
+        {
+            get => sumDamage;
+            set
+            {
+                sumDamage = value;
+                CheckForMilestones("sum", value);
+            }
+        }
+        public int UserSuccess
+        {
+            get => userSuccess;
+            set
+            {
+                userSuccess = value;
+                CheckForMilestones("success", value);
+            }
+        }
         #endregion
 
         // for resize listener
@@ -637,6 +698,27 @@ namespace Beatbox
             sb.Append(seperator);
             Log.Text = sb.ToString();
             ScrollViewer.ScrollToEnd();
+        }
+
+        private void CheckForMilestones(string id, double value)
+        {
+            switch (id)
+            {
+                case "level":
+                    break;
+                case "rate":
+                    break;
+                case "record":
+                    break;
+                case "continuous":
+                    break;
+                case "sum":
+                    break;
+                case "success":
+                    break;
+                default:
+                    break;
+            }
         }
 
         private void StartBeatbox(object sender, RoutedEventArgs e)
