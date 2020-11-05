@@ -17,7 +17,15 @@ Each level-up grants one "skill-point" that can be spent into one of these stats
 - Critical Strike Rating: improves chance to get double damage with a strike
 - Haste Rating: reduces time between attacks
 For each level-up there is a higher value of damage dealt required, therefore the player must decide how to improve his stats more efficient.
-For later releases, it is planned to have a possible interaction of the player with the application to increase the damage putput (like a real idle game).
+
+## Update (04.11.)
+
+While the repository had all the code already, now there is a standalone version released, tagged as v1.0.0.
+Major changes are:
+- introduced user interaction (press SPACE to make a crit with next hit)
+- fixed save/load functions
+- UI updates are now in sync with calculation
+- progress for next level fixed, might need tweaking
 
 ## Update (22.10.)
 
@@ -35,4 +43,5 @@ But that's only the beginning, more to come. But this is how it looks like now (
 
 ## How to use
 
-For now, before the first release, download the code (or clone it) and execute it in Visual Studio.
+Download the .zip file and extract it.
+Execute Beatbox.exe to run.
