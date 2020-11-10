@@ -1,5 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -16,6 +18,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using System.Xml.Serialization;
 
 namespace Beatbox
@@ -33,6 +36,10 @@ namespace Beatbox
         private static readonly int damagePerHit = 10;
         private static readonly int baseAttackRate = 2500;       // in millisec
         private static readonly double baseCritChance = 5.0;
+
+        private static ObservableCollection<Milestone> milestones = new ObservableCollection<Milestone>();
+        
+
         #region running
         private static int currentXP = 0;
         private static int currentLevel = 0;
@@ -141,6 +148,11 @@ namespace Beatbox
                 userSuccess = value;
                 CheckForMilestones("success", value);
             }
+        }
+        public ObservableCollection<Milestone> MilestonesList
+        {
+            get => milestones;
+            set => milestones = value;
         }
         #endregion
 
@@ -322,7 +334,7 @@ namespace Beatbox
             System.Diagnostics.Debug.WriteLine("Doing work");
 
             // for the case the worker is too fast
-            if (workerCount > currentLevel)
+            if (workerCount > CurrentLevel)
             {
                 System.Diagnostics.Debug.WriteLine("-- skipping --");
                 Thread.Sleep(500);
@@ -341,7 +353,7 @@ namespace Beatbox
 
                 currentHit = CalcDamageValue();
                 currentXP += currentHit;
-                sumDamage += currentHit;
+                SumDamage += currentHit;
                 System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, currentXP);
                 overdraft = currentXP - maxDamageValueForLevel;
 
@@ -396,7 +408,7 @@ namespace Beatbox
             }
             else    // normal continuation
             {
-                currentLevel+=1;
+                CurrentLevel+=1;
                 // update calculations and UI
                 ShowIncreaseButtons();
                 UpdateLevelConstraints();
@@ -511,19 +523,24 @@ namespace Beatbox
         {
             if (offset < 0)
             {
+                ContinuousHit = 0;
                 return;
             }
             else if (offset <= attackRateOffset)
             {
                 CritLabel.Text = "Perfect!";
                 isUserInputCrit = true;
+                ContinuousHit++;
+                UserSuccess++;
             }
             else if (offset <= attackRateOffset * 2)
             {
+                ContinuousHit = 0;
                 CritLabel.Text = "Close";
             }
             else
             {
+                ContinuousHit = 0;
                 CritLabel.Text = "Missed";
             }
             critMessageStoryboard.Begin();
@@ -540,7 +557,7 @@ namespace Beatbox
         /// </summary>
         private void UpdateAttackRate()
         {
-            currentAttackRate = (int) (baseAttackRate / Math.Pow(convertRatioHR, currentHR - 1));
+            CurrentAttackRate = (int) (baseAttackRate / Math.Pow(convertRatioHR, currentHR - 1));
             ValueAttackRate.Content = Math.Round(currentAttackRate / 1000.0,2);
             isChangingRate = true;
         }
@@ -597,7 +614,7 @@ namespace Beatbox
         {
             if (dmg > currentRecord)
             {
-                currentRecord = dmg;
+                CurrentRecord = dmg;
                 ValueRecordDamage.Content = currentRecord;
             }
         }
@@ -691,7 +708,7 @@ namespace Beatbox
             IncrBttnHR.IsEnabled = true;
         }
 
-        private void AppendToLog(Object text, String seperator)
+        private void AppendToLog(Object text, String seperator = "\n")
         {
             StringBuilder sb = new StringBuilder(Log.Text);
             sb.Append(text);
@@ -700,24 +717,69 @@ namespace Beatbox
             ScrollViewer.ScrollToEnd();
         }
 
-        private void CheckForMilestones(string id, double value)
+        private void CheckForMilestones(string id, int value)
         {
+            Milestone milestone = null;
             switch (id)
             {
                 case "level":
+                    milestone = Milestones.Level(value);
                     break;
                 case "rate":
+                    milestone = Milestones.Rate(value);
                     break;
                 case "record":
+                    milestone = Milestones.Record(value);
                     break;
                 case "continuous":
+                    milestone = Milestones.Continuous(value);
                     break;
                 case "sum":
+                    milestone = Milestones.Sum(value);
                     break;
                 case "success":
+                    milestone = Milestones.Success(value);
                     break;
                 default:
                     break;
+            }
+            if (milestone != null)
+            {
+                MilestonesList.Add(milestone);
+                ShowMilestone(milestone);
+            }
+            
+        }
+
+        private void ShowMilestone(Milestone milestone)
+        {
+            if (milestone == null)
+            {
+                return;
+            }
+
+            lock (new object())
+            {
+                StringBuilder sb = new StringBuilder();
+                string title = "New Milestone reached!";
+                sb.Append($" = {milestone.Name} =");
+                sb.Append("\n");
+                sb.Append($" - {milestone.Description}");
+                sb.Append("\n");
+                sb.Append("\n");
+                sb.Append(String.Format("<{0:H:mm:ss}>", milestone.DateTime));
+
+                App.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(
+                    () =>
+                    {
+                        var notify = new NotificationWindow();
+                        notify.Title = title;
+                        notify.Content = sb.ToString();
+                        notify.Show();
+                    }));
+
+                AppendToLog(title);
+                AppendToLog(sb.ToString());
             }
         }
 
@@ -819,18 +881,18 @@ namespace Beatbox
             }
 
             BeatboxSave save = ReadFromXmlFile<BeatboxSave>(path);
-            currentLevel = save.currentLevel;
+            CurrentLevel = save.currentLevel;
             currentXP = save.currentXP;
-            currentRecord = save.currentRecord;
+            CurrentRecord = save.currentRecord;
             availablePoints = save.availablePoints;
             currentAP = save.currentAP;
             currentCR = save.currentCR;
             currentHR = save.currentHR;
             currentCritChance = save.currentCritChance;
             currentDamagePerHit = save.currentDamagePerHit;
-            currentAttackRate = save.currentAttackRate;
+            CurrentAttackRate = save.currentAttackRate;
             overdraft = save.overdraft;
-            sumDamage = save.sumDamage;
+            SumDamage = save.sumDamage;
 
             ValueCurrentDamageDone.Content = currentXP;
             ValueRecordDamage.Content = currentRecord;
@@ -868,7 +930,7 @@ namespace Beatbox
             }
 
             BeatboxSave save = BeatboxSave.Instance;
-            save.currentLevel = currentLevel;
+            save.currentLevel = CurrentLevel;
             save.currentXP = currentXP;
             save.currentRecord = currentRecord;
             save.availablePoints = availablePoints;
@@ -934,6 +996,18 @@ namespace Beatbox
         {
             MessageBoxButton button = MessageBoxButton.OK;
             MessageBox.Show(info, "About this application", button);
+        }
+
+        private void Menu_Milestones_Click(object sender, RoutedEventArgs e)
+        {
+            StopBeatbox(sender, e);
+            App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(
+                    () =>
+                    {
+                        var milestoneDialog = new MilestoneDialog();
+                        milestoneDialog.Owner = this;
+                        milestoneDialog.Show();
+                    }));
         }
 
         private void TimedEvent(object sender, ElapsedEventArgs e)

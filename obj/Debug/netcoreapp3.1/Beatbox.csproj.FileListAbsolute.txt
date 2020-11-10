@@ -17,3 +17,8 @@ D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\Beatbox.csproj.Co
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\Beatbox.dll
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\Beatbox.pdb
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\Beatbox.genruntimeconfig.cache
+D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\NotificationWindow.baml
+D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\NotificationWindow.g.cs
+D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\MilestoneDialog.g.cs
+D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\GeneratedInternalTypeHelper.g.cs
+D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\MilestoneDialog.baml

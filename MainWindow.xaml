@@ -23,6 +23,7 @@
                 <MenuItem Header="Reset Points" Click="Menu_Reset_Click" />
             </MenuItem>
             <MenuItem Header="Info" Click="Menu_Info_Click"/>
+            <MenuItem Header="Milestones" Click="Menu_Milestones_Click"/>
         </Menu>
         <!-- Shows information when leveled up or points available -->
 
@@ -186,9 +187,7 @@
                 </Grid.RowDefinitions>
 
                 <ScrollViewer x:Name="ScrollViewer" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
-                    <Viewbox VerticalAlignment="Top" Stretch="Uniform" HorizontalAlignment="Center">
-                        <TextBlock x:Name="Log" Text="" TextWrapping="Wrap" Margin="10,10,10,10"/>
-                    </Viewbox>
+                    <TextBlock x:Name="Log" Text="" TextWrapping="Wrap" Margin="10,10,10,10"/>
                 </ScrollViewer>
 
                 <Viewbox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Stretch" HorizontalAlignment="Left">

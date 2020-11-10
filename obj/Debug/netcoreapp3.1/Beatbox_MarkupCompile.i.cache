@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NETCOREAPP;NETCOREAPP3_1
 D:\Eigene Dateien\Repositories\Beatbox\App.xaml
-11151548125
+3-1493291935
 
-8337008947
+10-965686140
 1921654412462
-MainWindow.xaml;
+MainWindow.xaml;MilestoneDialog.xaml;NotificationWindow.xaml;
 
-False
+True
 

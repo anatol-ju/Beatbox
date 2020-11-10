@@ -5,3 +5,4 @@ code_snippets.txt
 *.pdb
 *.dll
 *.zip
+bin/
