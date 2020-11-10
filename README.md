@@ -18,6 +18,11 @@ Each level-up grants one "skill-point" that can be spent into one of these stats
 - Haste Rating: reduces time between attacks
 For each level-up there is a higher value of damage dealt required, therefore the player must decide how to improve his stats more efficient.
 
+## Update (10.11.)
+
+New release v1.1.0, including Milestones!
+The user's progress is shown as a popup and in a new dialog window, but is not included in the saved files yet.
+
 ## Update (04.11.)
 
 While the repository had all the code already, now there is a standalone version released, tagged as v1.0.0.
