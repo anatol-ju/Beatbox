@@ -29,7 +29,7 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window
     {
-        private static readonly string info = "Current version: 0.0.1-pre-release";
+        private static readonly string info = "Current version: 1.1.1-pre-release";
         private static readonly int baseDamageValueForLevel = 100;
         private static int maxDamageValueForLevel = 100;
 
@@ -89,9 +89,10 @@ namespace Beatbox
 
         private static readonly int animationMaxFontSize = 30;
         private static bool isChangingRate = false;
-        private static bool isWorkerUnpaused = false;
+        private static bool isWorkerRunning = false;
         private static bool isWorkerProgressChanged = false;
         private static bool isRotateAnimationCompleted = false;
+        private static bool pauseWorker = false;
         #endregion
 
         #region properties
@@ -156,49 +157,38 @@ namespace Beatbox
         }
         #endregion
 
-        // for resize listener
-        const int WM_SIZING = 0x214;
-        const int WM_EXITSIZEMOVE = 0x232;
-        private double initFrameWidth;
-        private double initFrameHeight;
-
-        // Global HotKeys
-        [DllImport("user32.dll")]
-        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-        [DllImport("user32.dll")]
-        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-        private const int HOTKEY_ID = 9000;
-
-        //Modifiers:
-        private const uint MOD_NONE = 0x0000; //[NONE]
-        private const uint MOD_ALT = 0x0001; //ALT
-        private const uint MOD_CONTROL = 0x0002; //CTRL
-        private const uint MOD_SHIFT = 0x0004; //SHIFT
-        private const uint MOD_WIN = 0x0008; //WINDOWS
-                                             
-        private const uint VK_CAPITAL = 0x14; //CAPS LOCK:
-        private const uint VK_SPACE = 0x20; //SPACE BAR
-
-        private HwndSource source;
-
         public MainWindow()
         {
             InitializeComponent();
 
             timer = new System.Timers.Timer(timerInterval);
             timer.Elapsed += TimedEvent;
+
+            this.Closing += MainWindow_Closing;
         }
 
-        private void StopButton_KeyDown(object sender, KeyEventArgs e)
+        private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
-            e.Handled = true;
+            //StopBeatbox();
+            worker.CancelAsync();
+            circleStoryboard.Stop();
+            timer.Stop();
+            timer.Dispose();
+            explosionStoryboard.Stop();
+            worker.Dispose();
+            Application.Current.Shutdown();
         }
 
-        private void StartButton_KeyDown(object sender, KeyEventArgs e)
+        private void StopButton_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            e.Handled = true;
+            isKeyDown = true;
+            Debug.WriteLine("preview");
+        }
+
+        private void StartButton_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            isKeyDown = true;
+            Debug.WriteLine("preview");
         }
 
         #region init
@@ -226,9 +216,6 @@ namespace Beatbox
             ValueNextLevelAt.Content = 100;
             CritLabel.Text = "Crit!";
             CritLabel.Opacity = 0.0;
-
-            initFrameHeight = ContentFrame.ActualHeight;
-            initFrameWidth = ContentFrame.ActualWidth;
         }
 
         private void InitWorker()
@@ -332,6 +319,7 @@ namespace Beatbox
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("Doing work");
+            isWorkerRunning = true;
 
             // for the case the worker is too fast
             if (workerCount > CurrentLevel)
@@ -400,6 +388,7 @@ namespace Beatbox
             {
                 //worker.CancelAsync();
                 (sender as BackgroundWorker).Dispose();
+                isWorkerRunning = false;
             }
             else if (e.Error != null)   // error occured
             {
@@ -551,7 +540,8 @@ namespace Beatbox
             circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(durationInMilliSec));
             rotateAnimation.Duration = circleStoryboard.Duration;
         }
-
+        
+        #region value updates
         /// <summary>
         /// Updates attack rate with a given formula.
         /// </summary>
@@ -687,6 +677,7 @@ namespace Beatbox
                 AppendToLog("Haste Rating upgraded by 1.", "\n");
             }
         }
+        #endregion
 
         private void HideIncreaseButtons()
         {
@@ -767,7 +758,7 @@ namespace Beatbox
                 sb.Append($" - {milestone.Description}");
                 sb.Append("\n");
                 sb.Append("\n");
-                sb.Append(String.Format("<{0:H:mm:ss}>", milestone.DateTime));
+                sb.Append(String.Format("<{0:hh:mm:ss}>", milestone.DateTime));
 
                 App.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(
                     () =>
@@ -777,13 +768,10 @@ namespace Beatbox
                         notify.Content = sb.ToString();
                         notify.Show();
                     }));
-
-                AppendToLog(title);
-                AppendToLog(sb.ToString());
             }
         }
 
-        private void StartBeatbox(object sender, RoutedEventArgs e)
+        private bool StartBeatbox()
         {
             if (!worker.IsBusy)
             {
@@ -791,10 +779,12 @@ namespace Beatbox
                 circleStoryboard.Begin();
                 timer.Start();
                 AppendToLog("Starting to hit stuff...", "\n");
+                return true;
             }
+            return false;
         }
 
-        private void StopBeatbox(object sender, RoutedEventArgs e)
+        private bool StopBeatbox()
         {
             if (worker.IsBusy)
             {
@@ -802,7 +792,10 @@ namespace Beatbox
                 worker.CancelAsync();
                 timer.Stop();
                 AppendToLog("Enough hitting, going to stop now.", "\n");
+                return true;
             }
+            
+            return false;
         }
 
         #region serialization
@@ -852,6 +845,7 @@ namespace Beatbox
         }
         #endregion
 
+        #region menu handlers
         private void Menu_New_Click(object sender, RoutedEventArgs e)
         {
             Process.Start(Process.GetCurrentProcess().MainModule.FileName);
@@ -860,7 +854,7 @@ namespace Beatbox
 
         private void Menu_Load_Click(object sender, RoutedEventArgs e)
         {
-            StopBeatbox(StopButton, new System.Windows.RoutedEventArgs());
+            StopBeatbox();
             
             string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             path += "/beatbox.xml";
@@ -894,6 +888,13 @@ namespace Beatbox
             overdraft = save.overdraft;
             SumDamage = save.sumDamage;
 
+            Milestones.Rate_Count = save.rateCount;
+            Milestones.Record_Count = save.recordCount;
+            Milestones.Continuous_Count = save.continuousCount;
+            Milestones.Success_Count = save.successCount;
+            Milestones.Sum_Count = save.sumCount;
+            milestones = save.milestones;
+
             ValueCurrentDamageDone.Content = currentXP;
             ValueRecordDamage.Content = currentRecord;
             ValueAP.Content = currentAP;
@@ -909,7 +910,7 @@ namespace Beatbox
 
         private void Menu_Save_Click(object sender, RoutedEventArgs e)
         {
-            StopBeatbox(StopButton, new System.Windows.RoutedEventArgs());
+            StopBeatbox();
 
             string path = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             path += "/beatbox.xml";
@@ -942,6 +943,12 @@ namespace Beatbox
             save.currentAttackRate = currentAttackRate;
             save.overdraft = overdraft;
             save.sumDamage = sumDamage;
+            save.rateCount = Milestones.Rate_Count;
+            save.recordCount = Milestones.Record_Count;
+            save.continuousCount = Milestones.Continuous_Count;
+            save.successCount = Milestones.Success_Count;
+            save.sumCount = Milestones.Sum_Count;
+            save.milestones = milestones;
 
             WriteToXmlFile(path, save);
         }
@@ -954,13 +961,14 @@ namespace Beatbox
             timer.Dispose();
             explosionStoryboard.Stop();
             worker.Dispose();
-            Environment.Exit(1);
+            Application.Current.Shutdown();
         }
 
         private void Menu_Reset_Click(object sender, RoutedEventArgs e)
         {
             MessageBoxButton button = MessageBoxButton.YesNo;
-            MessageBoxResult result = MessageBox.Show("Are you sure to reset all talent points?", "Reset Points", button);
+            MessageBoxResult result = MessageBox.Show("Are you sure to reset all talent points?\n" +
+                "Your progress will not be deleted.", "Reset Points", button);
             if (result.Equals(MessageBoxResult.Yes))
             {
                 worker.CancelAsync();
@@ -1000,15 +1008,17 @@ namespace Beatbox
 
         private void Menu_Milestones_Click(object sender, RoutedEventArgs e)
         {
-            StopBeatbox(sender, e);
-            App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(
+            StopBeatbox();
+            MilestoneDialog dialog = new MilestoneDialog
+            {
+                Owner = this
+            };
+            _ = App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(
                     () =>
-                    {
-                        var milestoneDialog = new MilestoneDialog();
-                        milestoneDialog.Owner = this;
-                        milestoneDialog.Show();
-                    }));
+                    {dialog.Show();}));
+            
         }
+        #endregion
 
         private void TimedEvent(object sender, ElapsedEventArgs e)
         {
@@ -1026,63 +1036,35 @@ namespace Beatbox
             }
         }
 
-        private void ContentFrame_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void LeftMouseDown_Action(object sender, MouseButtonEventArgs e)
         {
-            if (e.IsRepeat || isKeyDown)
+            isKeyDown = true;
+        }
+
+        /// <summary>
+        /// Handler for the button that starts and pauses the application.
+        /// This is called internally and without notion to use it manually.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void StartStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (isWorkerRunning)
             {
-                return;
+                if (StopBeatbox())
+                {
+                    (sender as Button).Content = "Start";
+                }
             }
-            if (e.Key == Key.Space)
+            else
             {
-                System.Diagnostics.Debug.WriteLine("Space key pressed.");
-                isKeyDown = true;
+                if (StartBeatbox())
+                {
+                    (sender as Button).Content = "Pause";
+                }
             }
         }
 
-        // global HotKey
-        private IntPtr _windowHandle;
-        private HwndSource _source;
-
-        protected override void OnSourceInitialized(EventArgs e)
-        {
-            base.OnSourceInitialized(e);
-
-            _windowHandle = new WindowInteropHelper(this).Handle;
-            _source = HwndSource.FromHwnd(_windowHandle);
-            _source.AddHook(HwndHook);
-
-            //RegisterHotKey(_windowHandle, HOTKEY_ID, MOD_CONTROL, VK_CAPITAL); //CTRL + CAPS_LOCK
-            RegisterHotKey(_windowHandle, HOTKEY_ID, MOD_NONE, VK_SPACE);
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
-            _source.RemoveHook(HwndHook);
-            UnregisterHotKey(_windowHandle, HOTKEY_ID);
-            base.OnClosed(e);
-        }
-
-        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        {
-            const int WM_HOTKEY = 0x0312;
-            switch (msg)
-            {
-                case WM_HOTKEY:
-                    switch (wParam.ToInt32())
-                    {
-                        case HOTKEY_ID:
-                            int vkey = (((int)lParam >> 16) & 0xFFFF);
-                            if (vkey == VK_SPACE)
-                            {
-                                //handle global hot key here...
-                                isKeyDown = true;
-                            }
-                            handled = true;
-                            break;
-                    }
-                    break;
-            }
-            return IntPtr.Zero;
-        }
+        
     }
 }

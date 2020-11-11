@@ -10,11 +10,11 @@ namespace Beatbox
 	/// </summary>
 	public class Milestones
 	{
-		private static int Rate_Count { get; set; }
-		private static int Record_Count { get; set; }
-		private static int Continuous_Count { get; set; }
-		private static int Sum_Count { get; set; }
-		private static int Success_Count { get; set; }
+		public static int Rate_Count { get; set; }
+		public static int Record_Count { get; set; }
+		public static int Continuous_Count { get; set; }
+		public static int Sum_Count { get; set; }
+		public static int Success_Count { get; set; }
 
 		private Milestones()
 		{

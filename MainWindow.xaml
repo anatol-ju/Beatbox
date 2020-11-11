@@ -9,7 +9,7 @@
         Height="350" Width="800"
         MinHeight="350" MinWidth="800"
         x:Name="MainFrame" ContentRendered="Window_ContentRendered" ResizeMode="CanResize">
-    <DockPanel x:Name="ContentFrame" KeyDown="ContentFrame_KeyDown">
+    <DockPanel x:Name="ContentFrame">
         <!-- Menu bar -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
@@ -112,27 +112,19 @@
                         <RotateTransform/>
                     </Grid.RenderTransform>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="0.1*"/>
+                        <RowDefinition Height="0.05*"/>
                         <RowDefinition/>
-                        <RowDefinition Height="0.1*"/>
+                        <RowDefinition Height="0.25*"/>
                     </Grid.RowDefinitions>
-                    <Grid HorizontalAlignment="Stretch">
+                    <Grid HorizontalAlignment="Stretch" Grid.Row="0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition Width="0.3*"/>
                             <ColumnDefinition/>
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="StartButton" Click="StartBeatbox" Grid.Column="0">
-                            <Viewbox>
-                                <TextBlock>Start</TextBlock>
-                            </Viewbox>
-                        </Button>
+                        
                         <Image x:Name="ArrowImage" Source="/res/arrow_down.png" Grid.Column="1" />
-                        <Button x:Name="StopButton" Click="StopBeatbox" Grid.Column="2">
-                            <Viewbox>
-                                <TextBlock>Stop</TextBlock>
-                            </Viewbox>
-                        </Button>
+                        
                     </Grid>
                     <Viewbox x:Name="AnimationPanel" Grid.Row="1" VerticalAlignment="Bottom">
                         <Grid Margin="0,0,0,10">
@@ -170,9 +162,19 @@
                            VerticalAlignment="Top" HorizontalAlignment="Center"
                            FontFamily="Yu Gothic UI" FontStyle="Italic"/>
                     </Viewbox>
-                    <Viewbox Grid.Row="2" Stretch="Uniform">
-                        <Label Content="Use the 'Space' key shortly before the arrows touch to make next strike a critical hit."/>
-                    </Viewbox>
+
+                    <Border Grid.Row="2"
+                            BorderBrush="Gray" Background="#FFBCBCBC"
+                            CornerRadius="10"
+                            MouseLeftButtonDown="LeftMouseDown_Action">
+                        
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center">
+                            Left-Click on this area when the arrows meet
+                            <LineBreak/>
+                            to convert next hit into a critical strike.
+                        </TextBlock>
+                    </Border>
+                    
                 </Grid>
             </Grid>
             <!-- right column -->
@@ -182,11 +184,17 @@
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="0.15*"/>
                     <RowDefinition/>
-                    <RowDefinition Height="0.2*"/>
+                    <RowDefinition Height="0.25*"/>
                 </Grid.RowDefinitions>
 
-                <ScrollViewer x:Name="ScrollViewer" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2">
+                <Button x:Name="StartStopButton" Grid.Column="0" Grid.Row="0" Grid.ColumnSpan="2" Click="StartStopButton_Click">
+                    <Viewbox>
+                        <TextBlock>Start</TextBlock>
+                    </Viewbox>
+                </Button>
+                <ScrollViewer x:Name="ScrollViewer" Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,10">
                     <TextBlock x:Name="Log" Text="" TextWrapping="Wrap" Margin="10,10,10,10"/>
                 </ScrollViewer>
 
