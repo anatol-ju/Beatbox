@@ -41,6 +41,11 @@ namespace Beatbox
 
         public new void Show()
         {
+            if ((string)content.Content == "")
+            {
+                separator.IsEnabled = false;
+            }
+
             this.Topmost = true;
             base.Show();
 

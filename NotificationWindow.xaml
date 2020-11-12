@@ -12,7 +12,7 @@
                 <StackPanel
                     VerticalAlignment="Center" HorizontalAlignment="Center">
                     <Label x:Name="title"/>
-                    <Rectangle Height="1" Stroke="DarkGray" Margin="0,5,0,5" Width="{Binding ElementName=grid, Path=ActualWidth}"/>
+                    <Rectangle x:Name="separator" Height="1" Stroke="DarkGray" Margin="0,5,0,5" Width="{Binding ElementName=grid, Path=ActualWidth}"/>
                     <Label x:Name="content"/>
                     
                 </StackPanel>

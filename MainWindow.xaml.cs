@@ -765,7 +765,6 @@ namespace Beatbox
                     {
                         var notify = new NotificationWindow();
                         notify.Title = title;
-                        notify.Content = sb.ToString();
                         notify.Show();
                     }));
             }
@@ -1009,10 +1008,9 @@ namespace Beatbox
         private void Menu_Milestones_Click(object sender, RoutedEventArgs e)
         {
             StopBeatbox();
-            MilestoneDialog dialog = new MilestoneDialog
-            {
-                Owner = this
-            };
+            MilestoneDialog dialog = new MilestoneDialog();
+            dialog.Owner = this;
+
             _ = App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(
                     () =>
                     {dialog.Show();}));

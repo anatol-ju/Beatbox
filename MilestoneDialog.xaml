@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Beatbox"
         mc:Ignorable="d"
-        Title="Milestone Overview" SizeToContent="WidthAndHeight">
+        Title="Milestone Overview" SizeToContent="WidthAndHeight"
+        MinHeight="50" MinWidth="200">
 
     <Window.Resources>
 
@@ -35,6 +36,20 @@
         </DataTemplate>
 
         <local:MainWindow x:Key="ListBoxSource"/>
+
+        <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={x:Static RelativeSource.Self}, Path=Items.Count}" Value="0">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Gray">No Milestones yet.</TextBlock>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         
     </Window.Resources>
 
@@ -49,6 +64,8 @@
                          IsSynchronizedWithCurrentItem="True"
                          ItemsSource="{Binding Source={StaticResource ListBoxSource}, Path=MilestonesList}"
                          ItemTemplate="{StaticResource MilestoneListTemplate}">
+
+
                 </ListBox>
             </Border>
             <Button Name="okButton"
@@ -59,8 +76,6 @@
                     Margin="1,5,0,5"
                     Click="OkButton_Click">OK</Button>
         </StackPanel>
-        <!-- Accept or Cancel -->
-        
-        
+
     </Grid >
 </Window>
