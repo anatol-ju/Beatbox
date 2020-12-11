@@ -68,8 +68,13 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate>
-                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Gray">
-                                    Placeholder
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Gray" TextWrapping="Wrap">
+                                    To start the game, click on the <Bold>Start</Bold> button above and <Bold>Stop</Bold> to pause.
+                                    <LineBreak/>
+                                    The progress bar shows when you level up and gain points.
+                                    Use these increase your stats and improve your damage.
+                                    <LineBreak/>
+                                    Click on the grey area on bottom-center when both arrows meet to double your damage from next attack.
                                 </TextBlock>
                             </ControlTemplate>
                         </Setter.Value>

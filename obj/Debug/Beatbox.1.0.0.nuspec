@@ -3,7 +3,7 @@
   <metadata>
     <id>Beatbox</id>
     <version>1.0.0</version>
-    <authors>Beatbox</authors>
+    <authors>Anatol Ju</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Package Description</description>
     <dependencies>

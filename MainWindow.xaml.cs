@@ -30,7 +30,7 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window
     {
-        private static readonly string info = "Current version: 1.1.1-pre-release";
+        private static readonly string info = "Current version: 1.2.0-pre-release";
         private static readonly int baseDamageValueForLevel = 100;
         private static int maxDamageValueForLevel = 100;
 
