@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -42,7 +43,7 @@ namespace Beatbox
 
         #region running
         private static int currentXP = 0;
-        private static int currentLevel = 0;
+        private static int currentLevel = 1;
             
         private static int currentAP = 1;
         private static int currentCR = 1;
@@ -309,7 +310,7 @@ namespace Beatbox
 
         /// <summary>
         /// Method for the BackgroundWorker tasks.
-        /// It calculates the current damage from the hit by asking the <code>CalcDamageValue()</code> method,
+        /// It calculates the current damage from the hit by asking the <c>CalcDamageValue()</c> method,
         /// then updates the values for required UI labels and further calculations.
         /// When this is done, the worker has to wait until the rotation animation is completed before
         /// using the calculated values to update the UI.
@@ -444,8 +445,22 @@ namespace Beatbox
             UpdateRecordDamage(currentHit);
 
             bool check = currentHit > currentDamagePerHit;
-            string separator = check ? " (critical strike)\n" : "\n";
-            AppendToLog(currentHit, separator);
+
+            TextBlock tb = new TextBlock();
+            tb.TextWrapping = TextWrapping.Wrap;
+            if (check)
+            {
+                tb.Inlines.Add(new Run(Convert.ToString(currentHit)) { 
+                    FontWeight = FontWeights.Bold });
+                tb.Inlines.Add(" - (critical strike)");
+            }
+            else
+            {
+                tb.Inlines.Add(Convert.ToString(currentHit));
+            }
+            
+            AppendToLog(tb);
+            ScrollViewer.ScrollToEnd();
 
             FireExplosionEvent(currentHit, check);
 
@@ -455,6 +470,11 @@ namespace Beatbox
             isRotateAnimationCompleted = true;
         }
 
+        /// <summary>
+        /// Handler for completion of the circle storyboard.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void CircleStoryboard_Completed(object sender, EventArgs e)
         {
             if (!worker.IsBusy)
@@ -465,6 +485,11 @@ namespace Beatbox
             circleStoryboard.Begin();
         }
 
+        /// <summary>
+        /// Calculate the damage value based on stats. It also includes
+        /// logic to check if a crit occured and if it was based on user input.
+        /// </summary>
+        /// <returns>The effective damage value.</returns>
         private int CalcDamageValue()
         {
             Random random = new Random();
@@ -508,6 +533,12 @@ namespace Beatbox
             explosionStoryboard.Begin();
         }
 
+        /// <summary>
+        /// Based on a given number, this method provides different messages
+        /// on the UI to show if the user input resulted in a crit or not.
+        /// </summary>
+        /// <param name="offset">The number in milliseconds since the start
+        /// of the timer until this method is called.</param>
         private void HandleCritMessage(int offset)
         {
             if (offset < 0)
@@ -535,6 +566,12 @@ namespace Beatbox
             critMessageStoryboard.Begin();
         }
 
+        /// <summary>
+        /// This method is to be used when the attack rate changes.
+        /// It updates the animations and storyboard accordingly.
+        /// </summary>
+        /// <param name="durationInMilliSec">The new duration for the whole
+        /// animation without possible backward-animation.</param>
         private void UpdateRotateAnimation(int durationInMilliSec)
         {
             circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(durationInMilliSec));
@@ -557,7 +594,7 @@ namespace Beatbox
         /// </summary>
         private void UpdateLevelConstraints()
         {
-            maxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP,currentLevel));
+            maxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP, currentLevel - 1));
             LevelValue.Content = currentLevel;
             ValueNextLevelAt.Content = maxDamageValueForLevel;
         }
@@ -631,7 +668,7 @@ namespace Beatbox
                 {
                     HideIncreaseButtons();
                 }
-                AppendToLog("Attack Power upgraded by 1.", "\n");
+                AppendToLog("Attack Power upgraded by 1.");
             }
             
         }
@@ -653,7 +690,7 @@ namespace Beatbox
                 {
                     HideIncreaseButtons();
                 }
-                AppendToLog("Critical Strike Rating upgraded by 1.", "\n");
+                AppendToLog("Critical Strike Rating upgraded by 1.");
             }
         }
 
@@ -674,11 +711,14 @@ namespace Beatbox
                 {
                     HideIncreaseButtons();
                 }
-                AppendToLog("Haste Rating upgraded by 1.", "\n");
+                AppendToLog("Haste Rating upgraded by 1.");
             }
         }
         #endregion
 
+        /// <summary>
+        /// Use to hide the buttons to increase the stats.
+        /// </summary>
         private void HideIncreaseButtons()
         {
                 IncrBttnAP.Visibility = Visibility.Hidden;
@@ -689,6 +729,9 @@ namespace Beatbox
                 IncrBttnHR.IsEnabled = false;
         }
 
+        /// <summary>
+        /// Use to show the buttons to increase the stats.
+        /// </summary>
         private void ShowIncreaseButtons()
         {
             IncrBttnAP.Visibility = Visibility.Visible;
@@ -699,15 +742,24 @@ namespace Beatbox
             IncrBttnHR.IsEnabled = true;
         }
 
-        private void AppendToLog(Object text, String seperator = "\n")
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="obj"></param>
+        private void AppendToLog(Object obj)
         {
-            StringBuilder sb = new StringBuilder(Log.Text);
-            sb.Append(text);
-            sb.Append(seperator);
-            Log.Text = sb.ToString();
-            ScrollViewer.ScrollToEnd();
+            log.Items.Add(obj);
         }
 
+        /// <summary>
+        /// This method works as a selector for milestones.
+        /// Depending on the parameter, different Objects are created and used
+        /// in the further logic.
+        /// </summary>
+        /// <param name="id">An identificator for milestones, for example
+        /// "level" or "record".</param>
+        /// <param name="value">The corresponding number representation
+        /// of the milestone. For example "2" when level 2 was reached.</param>
         private void CheckForMilestones(string id, int value)
         {
             Milestone milestone = null;
@@ -737,39 +789,46 @@ namespace Beatbox
             if (milestone != null)
             {
                 MilestonesList.Add(milestone);
-                ShowMilestone(milestone);
+                ShowMilestonePopup(milestone);
+                AppendToLog(milestone);
             }
             
         }
 
-        private void ShowMilestone(Milestone milestone)
+        /// <summary>
+        /// This method opens a small notification window popup
+        /// in the position defined by <c>NotificationWindow</c>
+        /// class.
+        /// </summary>
+        /// <param name="milestone">Only the title of the <c>Milestone</c>
+        /// will be shown in the popup.</param>
+        private void ShowMilestonePopup(Milestone milestone)
         {
             if (milestone == null)
             {
                 return;
             }
+            string title = "New Milestone reached!";
 
-            lock (new object())
-            {
-                StringBuilder sb = new StringBuilder();
-                string title = "New Milestone reached!";
-                sb.Append($" = {milestone.Name} =");
-                sb.Append("\n");
-                sb.Append($" - {milestone.Description}");
-                sb.Append("\n");
-                sb.Append("\n");
-                sb.Append(String.Format("<{0:hh:mm:ss}>", milestone.DateTime));
+            App.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(
+                () =>
+                {
+                    var notify = new NotificationWindow();
+                    notify.Title = title;
+                    notify.Show();
+                }));
 
-                App.Current.Dispatcher.Invoke(DispatcherPriority.Normal, new Action(
-                    () =>
-                    {
-                        var notify = new NotificationWindow();
-                        notify.Title = title;
-                        notify.Show();
-                    }));
-            }
         }
 
+        /// <summary>
+        /// Handler to be used to start the worker and storyboards.
+        /// The worker is only started, when it was finished earlier.
+        /// That means, if the function is called too fast after
+        /// stopping it earlier, for example with a button click,
+        /// it will not work. Also, the command will not be delayed,
+        /// so the user has to click again later.
+        /// </summary>
+        /// <returns></returns>
         private bool StartBeatbox()
         {
             if (!worker.IsBusy)
@@ -777,12 +836,16 @@ namespace Beatbox
                 worker.RunWorkerAsync();
                 circleStoryboard.Begin();
                 timer.Start();
-                AppendToLog("Starting to hit stuff...", "\n");
+                AppendToLog("Starting to hit stuff...");
                 return true;
             }
             return false;
         }
 
+        /// <summary>
+        /// Handler to be used to stop the worker and storyboards.
+        /// </summary>
+        /// <returns></returns>
         private bool StopBeatbox()
         {
             if (worker.IsBusy)
@@ -790,7 +853,7 @@ namespace Beatbox
                 circleStoryboard.Stop();
                 worker.CancelAsync();
                 timer.Stop();
-                AppendToLog("Enough hitting, going to stop now.", "\n");
+                AppendToLog("Enough hitting, going to stop now.");
                 return true;
             }
             
@@ -1018,6 +1081,13 @@ namespace Beatbox
         }
         #endregion
 
+        /// <summary>
+        /// The handler method for the timer. It counts the number of intervals
+        /// or, if the appropriate variable had been changed since last call,
+        /// calculates the elapsed time since start by using the counting.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void TimedEvent(object sender, ElapsedEventArgs e)
         {
             if (isKeyDown)
@@ -1034,6 +1104,13 @@ namespace Beatbox
             }
         }
 
+        /// <summary>
+        /// A simple event handler method to indicate that the left mouse
+        /// button had been pressed. This only sets the variable, that is
+        /// used by the timer to notice any change. It is not a listener.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void LeftMouseDown_Action(object sender, MouseButtonEventArgs e)
         {
             isKeyDown = true;
