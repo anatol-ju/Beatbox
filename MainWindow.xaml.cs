@@ -28,7 +28,7 @@ namespace Beatbox
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     /// 
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
         private static readonly string info = "Current version: 1.2.0-pre-release";
         private static readonly int baseDamageValueForLevel = 100;
@@ -151,6 +151,25 @@ namespace Beatbox
                 CheckForMilestones("success", value);
             }
         }
+        public int CurrentXP
+        {
+            get => currentXP;
+            set
+            {
+                currentXP = value;
+                OnPropertyChanged(nameof(CurrentXP));
+            }
+        }
+        
+        public int MaxDamageValueForLevel
+        {
+            get => maxDamageValueForLevel;
+            set
+            {
+                maxDamageValueForLevel = value;
+                OnPropertyChanged(nameof(MaxDamageValueForLevel));
+            }
+        }
         public ObservableCollection<Milestone> MilestonesList
         {
             get => milestones;
@@ -158,9 +177,23 @@ namespace Beatbox
         }
         #endregion
 
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+        // constructor
         public MainWindow()
         {
             InitializeComponent();
+
+            // important for data binding, using properties from this class
+            this.DataContext = this;
 
             timer = new System.Timers.Timer(timerInterval);
             timer.Elapsed += TimedEvent;
@@ -168,6 +201,7 @@ namespace Beatbox
             this.Closing += MainWindow_Closing;
         }
 
+        // on close handler
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
             //StopBeatbox();
@@ -178,18 +212,6 @@ namespace Beatbox
             explosionStoryboard.Stop();
             worker.Dispose();
             Application.Current.Shutdown();
-        }
-
-        private void StopButton_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            isKeyDown = true;
-            Debug.WriteLine("preview");
-        }
-
-        private void StartButton_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            isKeyDown = true;
-            Debug.WriteLine("preview");
         }
 
         #region init
@@ -213,8 +235,6 @@ namespace Beatbox
             ValueCritChance.Content = currentCritChance;
             ValueAttackRate.Content = currentAttackRate/1000.0;
             LevelValue.Content = 0;
-            ValueCurrentDamageDone.Content = 0;
-            ValueNextLevelAt.Content = 100;
             CritLabel.Text = "Crit!";
             CritLabel.Opacity = 0.0;
         }
@@ -341,13 +361,13 @@ namespace Beatbox
                 this.Dispatcher.Invoke(new Action(() => isWorkerProgressChanged = false));
 
                 currentHit = CalcDamageValue();
-                currentXP += currentHit;
+                CurrentXP += currentHit;
                 SumDamage += currentHit;
-                System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, currentXP);
-                overdraft = currentXP - maxDamageValueForLevel;
+                System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, CurrentXP);
+                overdraft = CurrentXP - MaxDamageValueForLevel;
 
                 // must be a percentage
-                int percentage = (int)(100 * currentXP / (double)maxDamageValueForLevel);
+                int percentage = (int)(100 * CurrentXP / (double)MaxDamageValueForLevel);
 
                 (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
 
@@ -356,7 +376,7 @@ namespace Beatbox
 
                 if (overdraft >= 0)
                 {
-                    currentXP = overdraft;
+                    CurrentXP = overdraft;
                     return;
                 }
             }
@@ -402,17 +422,17 @@ namespace Beatbox
                 // update calculations and UI
                 ShowIncreaseButtons();
                 UpdateLevelConstraints();
-                UpdateProgressBar();
+                UpdateProgress();
 
                 availablePoints++;
 
                 if (overdraft > 0)
                 {
-                    currentXP = overdraft;
+                    CurrentXP = overdraft;
                 }
                 else
                 {
-                    currentXP = 0;
+                    CurrentXP = 0;
                 }
 
                 workerCount++;
@@ -438,9 +458,7 @@ namespace Beatbox
                 isChangingRate = false;
             }
 
-            ValueCurrentDamageDone.Content = currentXP;
-
-            UpdateProgressBar();
+            UpdateProgress();
             UpdateDPS();
             UpdateRecordDamage(currentHit);
 
@@ -594,9 +612,8 @@ namespace Beatbox
         /// </summary>
         private void UpdateLevelConstraints()
         {
-            maxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP, currentLevel - 1));
+            MaxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP, currentLevel - 1));
             LevelValue.Content = currentLevel;
-            ValueNextLevelAt.Content = maxDamageValueForLevel;
         }
 
         /// <summary>
@@ -618,9 +635,9 @@ namespace Beatbox
         /// Used to update the progress bar on the UI based on new data.
         /// Invoke only after maxDamageValueForLevel had been updated.
         /// </summary>
-        private void UpdateProgressBar()
+        private void UpdateProgress()
         {
-            XPBar.Value = (int)(100*currentXP/(double)maxDamageValueForLevel);
+            XPBar.Value = (int)(100*CurrentXP/(double)MaxDamageValueForLevel);
         }
 
         /// <summary>
@@ -938,7 +955,7 @@ namespace Beatbox
 
             BeatboxSave save = ReadFromXmlFile<BeatboxSave>(path);
             CurrentLevel = save.currentLevel;
-            currentXP = save.currentXP;
+            CurrentXP = save.currentXP;
             CurrentRecord = save.currentRecord;
             availablePoints = save.availablePoints;
             currentAP = save.currentAP;
@@ -957,7 +974,6 @@ namespace Beatbox
             Milestones.Sum_Count = save.sumCount;
             milestones = save.milestones;
 
-            ValueCurrentDamageDone.Content = currentXP;
             ValueRecordDamage.Content = currentRecord;
             ValueAP.Content = currentAP;
             ValueCR.Content = currentCR;
@@ -994,7 +1010,7 @@ namespace Beatbox
 
             BeatboxSave save = BeatboxSave.Instance;
             save.currentLevel = CurrentLevel;
-            save.currentXP = currentXP;
+            save.currentXP = CurrentXP;
             save.currentRecord = currentRecord;
             save.availablePoints = availablePoints;
             save.currentAP = currentAP;
@@ -1004,7 +1020,7 @@ namespace Beatbox
             save.currentDamagePerHit = currentDamagePerHit;
             save.currentAttackRate = currentAttackRate;
             save.overdraft = overdraft;
-            save.sumDamage = sumDamage;
+            save.sumDamage = SumDamage;
             save.rateCount = Milestones.Rate_Count;
             save.recordCount = Milestones.Record_Count;
             save.continuousCount = Milestones.Continuous_Count;
