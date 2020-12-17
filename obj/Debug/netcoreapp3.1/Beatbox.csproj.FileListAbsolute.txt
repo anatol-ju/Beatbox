@@ -21,4 +21,3 @@ D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\NotificationWindo
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\MilestoneDialog.g.cs
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\GeneratedInternalTypeHelper.g.cs
 D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\MilestoneDialog.baml
-D:\Eigene Dateien\Repositories\Beatbox\obj\Debug\netcoreapp3.1\Beatbox.csprojAssemblyReference.cache

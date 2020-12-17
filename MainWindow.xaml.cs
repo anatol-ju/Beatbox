@@ -39,7 +39,6 @@ namespace Beatbox
         private static readonly double baseCritChance = 5.0;
 
         private static ObservableCollection<Milestone> milestones = new ObservableCollection<Milestone>();
-        
 
         #region running
         private static int currentXP = 0;
@@ -64,7 +63,9 @@ namespace Beatbox
         private static readonly int attackRateOffset = 200;
         private static System.Timers.Timer timer;
         private static bool isUserInputCrit = false;
+        private static bool isCurrentCrit = false;
         private static bool isKeyDown = false;
+        private static bool isRunning = false;
         private static int timerCount = 0;
         private static readonly int timerInterval = 100;
 
@@ -77,23 +78,18 @@ namespace Beatbox
 
         // calculation
         private static BackgroundWorker worker;
-        private static int workerCount = 0;
 
         #region animation
-        private static Storyboard circleStoryboard;
+        private static Storyboard rotationStoryboard;
         private static Storyboard explosionStoryboard;
         private static Storyboard critMessageStoryboard;
-        private static DoubleAnimation rotateAnimation;
+        private static DoubleAnimation rotationAnimation;
         private static DoubleAnimation opacityAnimation;
         private static DoubleAnimation sizeAnimation;
         private static DoubleAnimation critMessageAnimation;
 
         private static readonly int animationMaxFontSize = 30;
         private static bool isChangingRate = false;
-        private static bool isWorkerRunning = false;
-        private static bool isWorkerProgressChanged = false;
-        private static bool isRotateAnimationCompleted = false;
-        private static bool pauseWorker = false;
         #endregion
 
         #region properties
@@ -187,6 +183,7 @@ namespace Beatbox
             }
         }
 
+
         // constructor
         public MainWindow()
         {
@@ -201,18 +198,23 @@ namespace Beatbox
             this.Closing += MainWindow_Closing;
         }
 
+
+
+
+
         // on close handler
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
             //StopBeatbox();
             worker.CancelAsync();
-            circleStoryboard.Stop();
+            rotationStoryboard.Stop();
             timer.Stop();
             timer.Dispose();
             explosionStoryboard.Stop();
             worker.Dispose();
             Application.Current.Shutdown();
         }
+
 
         #region init
         /// <summary>
@@ -243,12 +245,9 @@ namespace Beatbox
         {
             System.Diagnostics.Debug.WriteLine("Worker started...");
             worker = new BackgroundWorker();
-            worker.WorkerReportsProgress = true;
             worker.WorkerSupportsCancellation = true;
             worker.DoWork += Worker_DoWork;
-            worker.ProgressChanged += Worker_ProgressChanged;
             worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
-            workerCount = 0;
         }
 
         /// <summary>
@@ -258,25 +257,25 @@ namespace Beatbox
         /// </summary>
         private void InitRotateAnimation()
         {
-            rotateAnimation = new DoubleAnimation();
-            circleStoryboard = new Storyboard();
-            circleStoryboard.Completed += new EventHandler(CircleStoryboard_Completed);
+            rotationAnimation = new DoubleAnimation();
+            rotationStoryboard = new Storyboard();
+            rotationStoryboard.Completed += new EventHandler(RotationStoryboard_Completed);
 
-            rotateAnimation.From = 0;
-            rotateAnimation.To = 360;
-            rotateAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
-            rotateAnimation.Completed += new EventHandler(RotateAnimation_Completed);
+            rotationAnimation.From = 0;
+            rotationAnimation.To = 360;
+            rotationAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
+            rotationAnimation.Completed += new EventHandler(RotationAnimation_Completed);
 
-            Storyboard.SetTarget(rotateAnimation, rotatingArrow);
-            Storyboard.SetTargetProperty(rotateAnimation, new PropertyPath("(UIElement.RenderTransform).(RotateTransform.Angle)"));
-            circleStoryboard.Children.Add(rotateAnimation);
-            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
+            Storyboard.SetTarget(rotationAnimation, rotatingArrow);
+            Storyboard.SetTargetProperty(rotationAnimation, new PropertyPath("(UIElement.RenderTransform).(RotateTransform.Angle)"));
+            rotationStoryboard.Children.Add(rotationAnimation);
+            rotationStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(baseAttackRate));
             //circleStoryboard.RepeatBehavior = RepeatBehavior.Forever;
             //circleStoryboard.Completed += new EventHandler(CircleStoryboard_Completed);
 
             rotatingArrow.RenderTransform = new RotateTransform();
 
-            Resources.Add("Storyboard", circleStoryboard);
+            Resources.Add("Storyboard", rotationStoryboard);
         }
 
         private void InitExplosionAnimation()
@@ -328,6 +327,7 @@ namespace Beatbox
         }
         #endregion
 
+
         /// <summary>
         /// Method for the BackgroundWorker tasks.
         /// It calculates the current damage from the hit by asking the <c>CalcDamageValue()</c> method,
@@ -339,60 +339,24 @@ namespace Beatbox
         /// <param name="e"></param>
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Doing work");
-            isWorkerRunning = true;
-
-            // for the case the worker is too fast
-            if (workerCount > CurrentLevel)
+            // make sure worker is not cancelled
+            if ((sender as BackgroundWorker).CancellationPending == true)
             {
-                System.Diagnostics.Debug.WriteLine("-- skipping --");
-                Thread.Sleep(500);
+                e.Cancel = true;
+                return;
             }
-            
-            while (true)
-            {
-                // if cancelation is needed, see "completed" method
-                // call worker.CancelAsync() from UI to set CancellationPending
-                if ((sender as BackgroundWorker).CancellationPending == true)
-                {
-                    e.Cancel = true;
-                    return;
-                }
-                this.Dispatcher.Invoke(new Action(() => isWorkerProgressChanged = false));
 
-                currentHit = CalcDamageValue();
-                CurrentXP += currentHit;
-                SumDamage += currentHit;
-                System.Diagnostics.Debug.WriteLine("dmg: {0}, sum: {1}", currentHit, CurrentXP);
-                overdraft = CurrentXP - MaxDamageValueForLevel;
+            // calculate the current value for damage
+            DoAttack();
 
-                // must be a percentage
-                int percentage = (int)(100 * CurrentXP / (double)MaxDamageValueForLevel);
-
-                (sender as BackgroundWorker).ReportProgress(percentage, currentHit);
-
-                Thread.Sleep(currentAttackRate);
-                // use System.Timers.Timer maybe
-
-                if (overdraft >= 0)
-                {
-                    CurrentXP = overdraft;
-                    return;
-                }
-            }
+            // update values based on the calculation
+            CurrentXP += currentHit;
+            SumDamage += currentHit;
         }
 
-        /// <summary>
-        /// Used to reflect any changes that happen due to the BackgroundWorker.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine("progress changed");
 
-            isWorkerProgressChanged = true;
-        }
+
+
 
         /// <summary>
         /// Executed when the BackgroundWorker finished.
@@ -403,42 +367,56 @@ namespace Beatbox
         /// <param name="e"></param>
         private void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Worker completed.");
             
             if (e.Cancelled)    // manual cancellation
             {
-                //worker.CancelAsync();
-                (sender as BackgroundWorker).Dispose();
-                isWorkerRunning = false;
+                return;
             }
             else if (e.Error != null)   // error occured
             {
-                //worker.CancelAsync();
+                worker.CancelAsync();
                 (sender as BackgroundWorker).Dispose();
+                return;
             }
             else    // normal continuation
             {
-                CurrentLevel+=1;
-                // update calculations and UI
-                ShowIncreaseButtons();
-                UpdateLevelConstraints();
-                UpdateProgress();
-
-                availablePoints++;
-
-                if (overdraft > 0)
+                if (CurrentXP >= MaxDamageValueForLevel)
                 {
-                    CurrentXP = overdraft;
+                    LevelUp();
+                }
+
+                // update values
+                UpdateProgress();
+                UpdateDPS();
+                UpdateRecordDamage();
+
+                // show result as explosion animation
+                FireExplosionEvent();
+
+                // update log
+                TextBlock tb = new TextBlock();
+                tb.TextWrapping = TextWrapping.Wrap;
+
+                if (isCurrentCrit)
+                {
+                    tb.Inlines.Add(new Run(Convert.ToString(currentHit))
+                    {
+                        FontWeight = FontWeights.Bold
+                    });
+                    tb.Inlines.Add(" - (critical strike)");
                 }
                 else
                 {
-                    CurrentXP = 0;
+                    tb.Inlines.Add(Convert.ToString(currentHit));
                 }
-
-                workerCount++;
-                (sender as BackgroundWorker).RunWorkerAsync();
+                AppendToLog(tb);
+                ScrollViewer.ScrollToEnd();
             }
         }
+
+
+
+
 
         /// <summary>
         /// This method is called after every iteration of the DoubleAnimation.
@@ -448,83 +426,87 @@ namespace Beatbox
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void RotateAnimation_Completed(object sender, EventArgs e)
+        private void RotationAnimation_Completed(object sender, EventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Storyboard completed.");
 
             if (isChangingRate)
             {
-                UpdateRotateAnimation(currentAttackRate);
+                UpdateRotationAnimation(currentAttackRate);
                 isChangingRate = false;
             }
-
-            UpdateProgress();
-            UpdateDPS();
-            UpdateRecordDamage(currentHit);
-
-            bool check = currentHit > currentDamagePerHit;
-
-            TextBlock tb = new TextBlock();
-            tb.TextWrapping = TextWrapping.Wrap;
-            if (check)
-            {
-                tb.Inlines.Add(new Run(Convert.ToString(currentHit)) { 
-                    FontWeight = FontWeights.Bold });
-                tb.Inlines.Add(" - (critical strike)");
-            }
-            else
-            {
-                tb.Inlines.Add(Convert.ToString(currentHit));
-            }
-            
-            AppendToLog(tb);
-            ScrollViewer.ScrollToEnd();
-
-            FireExplosionEvent(currentHit, check);
 
             isKeyDown = false;
 
             timer.Start();
-            isRotateAnimationCompleted = true;
         }
 
+
+
+
+
         /// <summary>
-        /// Handler for completion of the circle storyboard.
+        /// Handler for completion of the rotation storyboard.
+        /// Used to start the background worker for calculations and restart
+        /// the storyboard for continuous animation.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void CircleStoryboard_Completed(object sender, EventArgs e)
+        private void RotationStoryboard_Completed(object sender, EventArgs e)
         {
-            if (!worker.IsBusy)
-            {
-                worker.RunWorkerAsync();
-            }
-            isRotateAnimationCompleted = false;
-            circleStoryboard.Begin();
+            worker.RunWorkerAsync();
+            rotationStoryboard.Begin();
         }
+
+
+
+
 
         /// <summary>
         /// Calculate the damage value based on stats. It also includes
         /// logic to check if a crit occured and if it was based on user input.
         /// </summary>
         /// <returns>The effective damage value.</returns>
-        private int CalcDamageValue()
+        private void DoAttack()
         {
             Random random = new Random();
 
             int minDmg = (int)(currentDamagePerHit * 0.75);
-            int returned = random.Next(minDmg, currentDamagePerHit + 1);
+            currentHit = random.Next(minDmg, currentDamagePerHit + 1);
 
-            currentCritChance = baseCritChance * Math.Pow(convertRatioCR, currentCR - 1);
-            bool check = random.NextDouble() * 100 + 1 <= currentCritChance;
-            if (check || isUserInputCrit)
+            isCurrentCrit = random.NextDouble() * 100 + 1 <= currentCritChance;
+            if (isCurrentCrit || isUserInputCrit)
             {
-                returned *= 2;
+                currentHit *= 2;
                 isUserInputCrit = false;
             }
-
-            return returned;
         }
+
+
+
+
+        /// <summary>
+        /// HManages all values that are related to level and level-up.
+        /// </summary>
+        private void LevelUp()
+        {
+            currentLevel++;
+            availablePoints++;
+
+            overdraft = CurrentXP - MaxDamageValueForLevel;
+            if (overdraft >= 0)
+            {
+                CurrentXP = overdraft;
+            }
+
+            MaxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP, currentLevel - 1));
+            LevelValue.Content = currentLevel;
+
+            ShowIncreaseButtons();
+        }
+
+
+
+
 
         /// <summary>
         /// Function to animate label on the UI, that shows damage values
@@ -533,10 +515,10 @@ namespace Beatbox
         /// </summary>
         /// <param name="damageValue"></param>
         /// <param name="isCrit"></param>
-        private void FireExplosionEvent(int damageValue, bool isCrit)
+        private void FireExplosionEvent()
         {
-            ExplosionLabel.Text = Convert.ToString(damageValue);
-            if (isCrit)
+            ExplosionLabel.Text = Convert.ToString(currentHit);
+            if (isCurrentCrit)
             {
                 ExplosionLabel.FontWeight = FontWeights.Bold;
                 ExplosionLabel.FontStyle = FontStyles.Italic;
@@ -550,6 +532,10 @@ namespace Beatbox
             }
             explosionStoryboard.Begin();
         }
+
+
+
+
 
         /// <summary>
         /// Based on a given number, this method provides different messages
@@ -584,18 +570,23 @@ namespace Beatbox
             critMessageStoryboard.Begin();
         }
 
+
+
+
+
         /// <summary>
         /// This method is to be used when the attack rate changes.
         /// It updates the animations and storyboard accordingly.
         /// </summary>
         /// <param name="durationInMilliSec">The new duration for the whole
         /// animation without possible backward-animation.</param>
-        private void UpdateRotateAnimation(int durationInMilliSec)
+        private void UpdateRotationAnimation(int durationInMilliSec)
         {
-            circleStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(durationInMilliSec));
-            rotateAnimation.Duration = circleStoryboard.Duration;
+            rotationStoryboard.Duration = new Duration(TimeSpan.FromMilliseconds(durationInMilliSec));
+            rotationAnimation.Duration = rotationStoryboard.Duration;
         }
         
+
         #region value updates
         /// <summary>
         /// Updates attack rate with a given formula.
@@ -607,14 +598,9 @@ namespace Beatbox
             isChangingRate = true;
         }
 
-        /// <summary>
-        /// Updates constraints for min and max damage for the level-up.
-        /// </summary>
-        private void UpdateLevelConstraints()
-        {
-            MaxDamageValueForLevel = (int)(baseDamageValueForLevel * Math.Pow(convertRatioXP, currentLevel - 1));
-            LevelValue.Content = currentLevel;
-        }
+
+
+
 
         /// <summary>
         /// Updates minimum and maximum damage possible.
@@ -631,6 +617,10 @@ namespace Beatbox
             System.Diagnostics.Debug.WriteLine("currentMaxDamage: {0}", (int)(currentDamagePerHit * 0.75));
         }
 
+
+
+
+
         /// <summary>
         /// Used to update the progress bar on the UI based on new data.
         /// Invoke only after maxDamageValueForLevel had been updated.
@@ -639,6 +629,10 @@ namespace Beatbox
         {
             XPBar.Value = (int)(100*CurrentXP/(double)MaxDamageValueForLevel);
         }
+
+
+
+
 
         /// <summary>
         /// Function to update the damage per second. It is calculated entirely on average damage
@@ -650,23 +644,36 @@ namespace Beatbox
                 Math.Round(currentCritChance * currentDamagePerHit * 1.75 / (2.0 * currentAttackRate / 1000),2);
         }
 
+
+
+
+
         /// <summary>
         /// Checks if the given value for damage is higher than the current record and updates accordingly.
         /// </summary>
         /// <param name="dmg">Value to be compared with current record.</param>
-        private void UpdateRecordDamage(int dmg)
+        private void UpdateRecordDamage()
         {
-            if (dmg > currentRecord)
+            if (currentHit > currentRecord)
             {
-                CurrentRecord = dmg;
+                CurrentRecord = currentHit;
                 ValueRecordDamage.Content = currentRecord;
             }
         }
 
+
+
+
+
         private void UpdateCritChance()
         {
+            currentCritChance = baseCritChance * Math.Pow(convertRatioCR, currentCR - 1);
             ValueCritChance.Content = Math.Round(currentCritChance, 2);
         }
+
+
+
+
 
         /// <summary>
         /// Event handler to increase attack power.
@@ -690,6 +697,10 @@ namespace Beatbox
             
         }
 
+
+
+
+
         /// <summary>
         /// Event handler to increase critical rating.
         /// </summary>
@@ -710,6 +721,10 @@ namespace Beatbox
                 AppendToLog("Critical Strike Rating upgraded by 1.");
             }
         }
+
+
+
+
 
         /// <summary>
         /// Event handler to increase haste rating.
@@ -733,6 +748,10 @@ namespace Beatbox
         }
         #endregion
 
+
+
+
+
         /// <summary>
         /// Use to hide the buttons to increase the stats.
         /// </summary>
@@ -745,6 +764,10 @@ namespace Beatbox
                 IncrBttnCR.IsEnabled = false;
                 IncrBttnHR.IsEnabled = false;
         }
+
+
+
+
 
         /// <summary>
         /// Use to show the buttons to increase the stats.
@@ -759,6 +782,10 @@ namespace Beatbox
             IncrBttnHR.IsEnabled = true;
         }
 
+
+
+
+
         /// <summary>
         /// 
         /// </summary>
@@ -767,6 +794,10 @@ namespace Beatbox
         {
             log.Items.Add(obj);
         }
+
+
+
+
 
         /// <summary>
         /// This method works as a selector for milestones.
@@ -812,6 +843,10 @@ namespace Beatbox
             
         }
 
+
+
+
+
         /// <summary>
         /// This method opens a small notification window popup
         /// in the position defined by <c>NotificationWindow</c>
@@ -837,6 +872,10 @@ namespace Beatbox
 
         }
 
+
+
+
+
         /// <summary>
         /// Handler to be used to start the worker and storyboards.
         /// The worker is only started, when it was finished earlier.
@@ -846,35 +885,31 @@ namespace Beatbox
         /// so the user has to click again later.
         /// </summary>
         /// <returns></returns>
-        private bool StartBeatbox()
+        private void StartBeatbox()
         {
-            if (!worker.IsBusy)
-            {
-                worker.RunWorkerAsync();
-                circleStoryboard.Begin();
-                timer.Start();
-                AppendToLog("Starting to hit stuff...");
-                return true;
-            }
-            return false;
+            rotationStoryboard.Begin();
+            timer.Start();
+            AppendToLog("Starting to hit stuff...");
+
+            isRunning = true;
         }
+
+
+
+
 
         /// <summary>
         /// Handler to be used to stop the worker and storyboards.
         /// </summary>
         /// <returns></returns>
-        private bool StopBeatbox()
+        private void StopBeatbox()
         {
-            if (worker.IsBusy)
-            {
-                circleStoryboard.Stop();
-                worker.CancelAsync();
-                timer.Stop();
-                AppendToLog("Enough hitting, going to stop now.");
-                return true;
-            }
-            
-            return false;
+            rotationStoryboard.Stop();
+            worker.CancelAsync();
+            timer.Stop();
+            AppendToLog("Enough hitting, going to stop now.");
+
+            isRunning = false;
         }
 
         #region serialization
@@ -983,7 +1018,7 @@ namespace Beatbox
             ValueCurrentDamage.Content = str;
             ValueAttackRate.Content = Math.Round(currentAttackRate / 1000.0, 2);
             UpdateDPS();
-            UpdateLevelConstraints();
+            //UpdateLevelConstraints();
         }
 
         private void Menu_Save_Click(object sender, RoutedEventArgs e)
@@ -1034,7 +1069,7 @@ namespace Beatbox
         private void Menu_Exit_Click(object sender, RoutedEventArgs e)
         {
             worker.CancelAsync();
-            circleStoryboard.Stop();
+            rotationStoryboard.Stop();
             timer.Stop();
             timer.Dispose();
             explosionStoryboard.Stop();
@@ -1050,7 +1085,7 @@ namespace Beatbox
             if (result.Equals(MessageBoxResult.Yes))
             {
                 worker.CancelAsync();
-                circleStoryboard.Stop();
+                rotationStoryboard.Stop();
                 timer.Stop();
                 timer.Dispose();
                 explosionStoryboard.Stop();
@@ -1110,7 +1145,6 @@ namespace Beatbox
             {
                 timer.Stop();
                 int check = currentAttackRate - timerCount * timerInterval;
-                System.Diagnostics.Debug.WriteLine("Check {0}", check);
                 this.Dispatcher.BeginInvoke(new Action(() => HandleCritMessage(check)));
                 timerCount = 0;
             }
@@ -1119,6 +1153,10 @@ namespace Beatbox
                 timerCount++;
             }
         }
+
+
+
+
 
         /// <summary>
         /// A simple event handler method to indicate that the left mouse
@@ -1132,6 +1170,10 @@ namespace Beatbox
             isKeyDown = true;
         }
 
+
+
+
+
         /// <summary>
         /// Handler for the button that starts and pauses the application.
         /// This is called internally and without notion to use it manually.
@@ -1140,22 +1182,17 @@ namespace Beatbox
         /// <param name="e"></param>
         private void StartStopButton_Click(object sender, RoutedEventArgs e)
         {
-            if (isWorkerRunning)
+            if (isRunning)
             {
-                if (StopBeatbox())
-                {
-                    (sender as Button).Content = "Start";
-                }
+                StopBeatbox();
+                (sender as Button).Content = "Start";
             }
             else
             {
-                if (StartBeatbox())
-                {
-                    (sender as Button).Content = "Pause";
-                }
+                StartBeatbox();
+                (sender as Button).Content = "Pause";
             }
         }
 
-        
     }
 }
