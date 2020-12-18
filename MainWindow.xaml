@@ -75,7 +75,7 @@
                                     The progress bar shows when you level up and gain points.
                                     Use these increase your stats and improve your damage.
                                     <LineBreak/>
-                                    Click on the grey area on bottom-center when both arrows meet to double your damage from next attack.
+                                    Click on the grey area on bottom-center when both arrows meet to make the attack a critical hit with double damage.
                                 </TextBlock>
                             </ControlTemplate>
                         </Setter.Value>

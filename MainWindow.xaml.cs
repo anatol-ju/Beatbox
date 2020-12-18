@@ -30,7 +30,7 @@ namespace Beatbox
     /// 
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
-        private static readonly string info = "Current version: 1.2.0-pre-release";
+        private static readonly string info = "Current version: 1.2.2";
         private static readonly int baseDamageValueForLevel = 100;
         private static int maxDamageValueForLevel = 100;
 
@@ -1185,12 +1185,12 @@ namespace Beatbox
             if (isRunning)
             {
                 StopBeatbox();
-                (sender as Button).Content = "Start";
+                (((sender as Button).Content as Viewbox).Child as TextBlock).Text = "Start";
             }
             else
             {
                 StartBeatbox();
-                (sender as Button).Content = "Pause";
+                (((sender as Button).Content as Viewbox).Child as TextBlock).Text = "Pause";
             }
         }
 
